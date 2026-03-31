@@ -1,0 +1,15 @@
+============================================================
+[GLOBAL STYLE ANCHOR]
+============================================================
+Illustration style: Clean storyboard-style digital illustration.
+Soft ink outlines, flat-wash color fills, mild cel-shading.
+Color palette: Warm and approachable. Consistent color grading 
+  across all panels in this sequence.
+Rendering rule: This image is Panel {N} of {TOTAL} in a single 
+  continuous visual story. ALL of the following MUST remain 
+  strictly identical to previous panels unless this prompt 
+  explicitly overrides them:
+    - Subject's physical appearance, colors, and outfit/markings
+    - Recurring background props and environment color scheme
+    - Overall lighting temperature and illustration style
+============================================================

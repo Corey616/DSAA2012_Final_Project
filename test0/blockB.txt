@@ -1,0 +1,19 @@
+============================================================
+[SUBJECT PROFILE]
+============================================================
+Name / Label    : {SUBJECT_NAME}
+                  
+Category        : {CATEGORY}
+
+-- PHYSICAL DESCRIPTION --
+Body / Build    : {BODY_DESC}
+
+Head / Face     : {HEAD_DESC}
+                  
+Coat / Skin     : {COLOR_SCHEME}
+                  
+Outfit / Markings : {OUTFIT_OR_MARKINGS}
+
+-- CONSISTENCY ANCHOR --
+Signature / Visual Anchor     : {SIGNATURE_FEATURE}
+============================================================

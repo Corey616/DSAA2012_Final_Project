@@ -1,0 +1,134 @@
+{
+  "Lily": {
+    "SUBJECT_NAME": "Lily",
+    "CATEGORY": "human_female",
+    "BODY_DESC": "Slender, mid-20s, average height",
+    "HEAD_DESC": "Soft oval face, gentle brown eyes, short brown bob with side-swept bangs",
+    "COLOR_SCHEME": "Light skin, brown hair",
+    "OUTFIT_OR_MARKINGS": "Cream oversized knit sweater, beige linen trousers, white socks",
+    "SIGNATURE_FEATURE": "The cream knit sweater + brown bob combination",
+    "TEST_SET_1": {
+      "Panel_1": {
+        "CORE_ACTION": "Standing at kitchen counter, cracking an egg into a bowl",
+        "EXPRESSION": "Focused, soft downward gaze at bowl",
+        "SHOT_TYPE": "medium",
+        "CAMERA_ANGLE": "low_angle (counter height)",
+        "LOCATION": "Small cozy apartment kitchen",
+        "BG_ELEMENTS": "White cabinets, wooden countertop, herb pots, sheer curtain",
+        "MOOD": "Quiet domestic contentment",
+        "SPATIAL_LINK": "ESTABLISHING",
+        "CARRIED_PROPS": "N/A"
+      },
+      "Panel_2": {
+        "CORE_ACTION": "Standing at window, gazing outside, one hand on sill",
+        "EXPRESSION": "Calm, wistful, eyes unfocused on middle distance",
+        "SHOT_TYPE": "medium_close_up",
+        "CAMERA_ANGLE": "over_the_shoulder (3/4 profile)",
+        "LOCATION": "Same kitchen, window wall",
+        "BG_ELEMENTS": "Sheer white curtain, herb pots, blurred outdoor greenery",
+        "MOOD": "Introspective peaceful solitude",
+        "SPATIAL_LINK": "Same kitchen; counter from P1 blurred in background",
+        "CARRIED_PROPS": "Herb pots identical to Panel 1"
+      },
+      "Panel_3": {
+        "CORE_ACTION": "Seated at dining table, eating with a spoon",
+        "EXPRESSION": "Relaxed, gentle gaze alternating between plate and book",
+        "SHOT_TYPE": "medium",
+        "CAMERA_ANGLE": "eye_level with 15° overhead tilt",
+        "LOCATION": "Apartment dining area, adjacent to kitchen",
+        "BG_ELEMENTS": "Wooden dining table, ceramic plate, open book, white mug",
+        "MOOD": "Cozy slow-morning warmth",
+        "SPATIAL_LINK": "Same apartment; kitchen from P1–2 faintly visible in BG",
+        "CARRIED_PROPS": "Herb pots visible through background window"
+      }
+    }
+  },
+  "Ryan": {
+    "SUBJECT_NAME": "Ryan",
+    "CATEGORY": "human_male",
+    "BODY_DESC": "Lean, late-20s, average height",
+    "HEAD_DESC": "Angular jaw, short dark hair, light stubble, dark eyes",
+    "COLOR_SCHEME": "Light-medium skin, dark hair",
+    "OUTFIT_OR_MARKINGS": "Navy blue commuter jacket, grey slim trousers, white sneakers, olive backpack",
+    "SIGNATURE_FEATURE": "The olive green backpack always on left shoulder",
+    "TEST_SET_2": {
+      "Panel_1": {
+        "CORE_ACTION": "Striding quickly along pavement toward a stopped bus",
+        "EXPRESSION": "Determined forward gaze, urgent energy",
+        "SHOT_TYPE": "wide",
+        "CAMERA_ANGLE": "eye_level",
+        "LOCATION": "City pavement at bus stop",
+        "BG_ELEMENTS": "Stopped city bus, streetlamp, distant buildings, pavement",
+        "MOOD": "Urgent city-morning energy",
+        "SPATIAL_LINK": "ESTABLISHING",
+        "CARRIED_PROPS": "N/A"
+      },
+      "Panel_2": {
+        "CORE_ACTION": "Stopped at open bus door, one foot on step, right hand gripping rail",
+        "EXPRESSION": "Brief pause, eyes directed ahead with resolve",
+        "SHOT_TYPE": "medium",
+        "CAMERA_ANGLE": "low_angle (looking slightly up at door)",
+        "LOCATION": "Bus entry door threshold",
+        "BG_ELEMENTS": "Bus door frame, interior warm light spilling out, street behind",
+        "MOOD": "Brief moment of resolve and transition",
+        "SPATIAL_LINK": "Same bus from P1; Ryan has reached the door",
+        "CARRIED_PROPS": "Olive backpack identical to Panel 1"
+      },
+      "Panel_3": {
+        "CORE_ACTION": "Seated inside bus, body angled toward window, backpack on lap",
+        "EXPRESSION": "Calm outward gaze through window, settled",
+        "SHOT_TYPE": "medium_close_up",
+        "CAMERA_ANGLE": "eye_level from across aisle",
+        "LOCATION": "Bus interior, window seat",
+        "BG_ELEMENTS": "Bus seat rows, window with passing cityscape, overhead rack",
+        "MOOD": "Calm in-transit quietude",
+        "SPATIAL_LINK": "Interior of same bus from P2",
+        "CARRIED_PROPS": "Same olive backpack, now on lap"
+      }
+    }
+  },
+  "Dog": {
+    "SUBJECT_NAME": "Dog",
+    "CATEGORY": "animal_canine",
+    "BODY_DESC": "Medium-sized, athletic build",
+    "HEAD_DESC": "Floppy ears, bright round eyes, open friendly expression",
+    "COLOR_SCHEME": "Golden-amber fur, cream chest patch",
+    "OUTFIT_OR_MARKINGS": "No collar; distinctive fluffy golden tail",
+    "SIGNATURE_FEATURE": "The golden-amber coat + white chest patch",
+    "TEST_SET_3": {
+      "Panel_1": {
+        "CORE_ACTION": "Sprinting at full gallop across open meadow",
+        "EXPRESSION": "Ears back, tongue out, eyes bright — pure joyful speed",
+        "SHOT_TYPE": "wide",
+        "CAMERA_ANGLE": "eye_level",
+        "LOCATION": "Open green meadow, bright daytime",
+        "BG_ELEMENTS": "Tall grass foreground, distant treeline, clear sky",
+        "MOOD": "Joyful boundless freedom",
+        "SPATIAL_LINK": "ESTABLISHING",
+        "CARRIED_PROPS": "N/A"
+      },
+      "Panel_2": {
+        "CORE_ACTION": "Low crouched run, eyes locked on a bouncing yellow tennis ball",
+        "EXPRESSION": "Ears forward, intense focused gaze, mouth slightly open",
+        "SHOT_TYPE": "medium",
+        "CAMERA_ANGLE": "low_angle (dynamic)",
+        "LOCATION": "Same meadow, mid-field",
+        "BG_ELEMENTS": "Yellow tennis ball in foreground trajectory, grass, open sky",
+        "MOOD": "Focused playful determination",
+        "SPATIAL_LINK": "Same meadow; continuous chase from P1",
+        "CARRIED_PROPS": "N/A — ball introduced this panel"
+      },
+      "Panel_3": {
+        "CORE_ACTION": "Trotting toward camera, yellow ball held in mouth",
+        "EXPRESSION": "Ears up, tail raised and wagging, eyes bright and triumphant",
+        "SHOT_TYPE": "medium",
+        "CAMERA_ANGLE": "eye_level, dog approaching camera",
+        "LOCATION": "Same meadow, returning toward camera",
+        "BG_ELEMENTS": "Same meadow grass, warm afternoon light, open sky",
+        "MOOD": "Happy triumphant return",
+        "SPATIAL_LINK": "Same meadow; Dog returning from direction of P2",
+        "CARRIED_PROPS": "Yellow tennis ball (identical to Panel 2) in mouth"
+      }
+    }
+  }
+}

@@ -1,0 +1,46 @@
+============================================================
+[PANEL {N} / {TOTAL}]
+============================================================
+
+---- SUBJECT & ACTION ----
+Subject         : {SUBJECT_NAME} (refer to Subject Profile above)
+Core action     : {CORE_ACTION}
+                  
+Body language   : {BODY_LANGUAGE}
+                  
+Facial / Animal Expression: {EXPRESSION}
+        
+---- CAMERA & FRAMING ----
+Shot type       : {SHOT_TYPE}
+                  
+Camera angle    : {CAMERA_ANGLE}
+                  
+Subject in frame: {FRAME_PLACEMENT}
+
+---- ENVIRONMENT ----
+Location        : {LOCATION}
+                  
+Time of day     : {TIME_OF_DAY}
+                  
+BG elements     : {BG_ELEMENTS}
+
+Depth of field  : {DOF}
+                  
+---- LIGHTING & ATMOSPHERE ----
+Light source    : {LIGHT_SOURCE}
+                  
+Color temp      : {COLOR_TEMP}
+                  
+Mood            : {MOOD}
+                  
+---- CONTINUITY BRIDGE ----
+Spatial link    : {SPATIAL_LINK}
+                  
+Temporal link   : {TEMPORAL_LINK}
+                  
+Carried props   : {CARRIED_PROPS}
+                  
+------------------------------------------------------------
+Strictly follow [GLOBAL STYLE ANCHOR] and 
+[SUBJECT PROFILE – {SUBJECT_NAME}] defined above.
+============================================================
