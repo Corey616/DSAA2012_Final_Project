@@ -1,69 +1,181 @@
 #!/bin/bash
 
-# =============================================================================
-# 🚀 项目: Task1-StoryGen - 模型下载脚本
-# 角色: Zhenzhuo (扩散模型核心)
-# 功能: 下载 SDXL 基础模型和 IP-Adapter 依赖
-# 路径: 对应 Dockerfile 中的 /app/models 目录
-# =============================================================================
+# File: scripts/download_models_incremental.sh
+# Description: Incremental download script that skips existing files.
 
-echo "🚀 开始下载模型文件..."
-echo "💡 提示: 如果下载中断，可以手动运行此脚本，或使用 aria2 进行多线程下载。"
+echo "🚀 Starting incremental download of Project 2 model weights..."
+ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+echo "📁 Project Root: $ROOT_DIR"
+cd "$ROOT_DIR/models" || exit 1
 
-# --- 配置区域 ---
-# 设置 HuggingFace 国内镜像源 (关键! 解决中国网络慢的问题)
-export HF_ENDPOINT="https://hf-mirror.com"
+# 错误计数器（用于后台任务）
+ERRORS=0
+ERROR_LOCK=$(mktemp -u)
 
-# 设置 HuggingFace Token (用于下载需要授权的模型，如 Llama, SDXL-Turbo 等)
-# 如果你没有特定 Token，可以留空或注释掉 export 语句，公开模型不需要 Token
-# export HUGGING_FACE_HUB_TOKEN=""
+# 线程安全的错误计数增加函数
+increment_error() {
+    # 简单的文件锁机制防止竞态条件
+    (
+        flock -x 200
+        ERRORS=$((ERRORS + 1))
+    ) 200>"$ERROR_LOCK"
+}
 
-# 定义模型存储目录 (必须与 Dockerfile 中的 VOLUME 或 WORKDIR 一致)
-# 根据文档，Keyu 的 Dockerfile 应该会 COPY 这个目录
-MODEL_DIR="./models"
-
-# --- 核心逻辑 ---
-# 1. 创建目录
-mkdir -p $MODEL_DIR
-cd $MODEL_DIR
-
-# 2. 定义下载函数 (使用 huggingface_hub 的命令行工具)
-download_model() {
-    local repo_id=$1
-    local local_dir=$2
-    echo "🔽 正在下载模型: $repo_id"
-    echo "   保存路径: $local_dir"
-    
-    # 使用 hf_transfer (更快) 或 huggingface-cli
-    # 如果报错请先: pip install huggingface_hub
-    huggingface-cli download $repo_id --local-dir $local_dir --resume-download
-    
-    if [ $? -eq 0 ]; then
-        echo "✅ 成功: $repo_id"
-    else
-        echo "❌ 失败: $repo_id (请检查网络或 Token)"
-        # exit 1
+# ==========================================
+# Helper: Parallel Download (only if file doesn't exist)
+# ==========================================
+download_async_if_missing() {
+    local url="$1"
+    local output="$2"
+    if [ -f "$output" ]; then
+        echo "⏭️  [SKIP] $output (already exists)"
+        return 0 # 文件已存在，不计入错误
+    fi
+    echo "🔽 [ASYNC] $output"
+    # -x 8 足够了，因为多个文件同时多线程，总数会很大
+    aria2c -x 8 -s 8 -c --quiet "$url" -o "$output"
+    # 检查返回值
+    if [ $? -ne 0 ]; then
+        echo "❌ Failed: $output"
+        increment_error
     fi
 }
 
-# --- 模型列表 ---
-# 根据《详细计划.md》文档要求，我们需要以下模型：
+# ==========================================
+# 1. Start SDXL Download (Background)
+# ==========================================
+echo "📦 [1/3] Queuing SDXL..."
+SDXL_DIR="sdxl"
+mkdir -p "$SDXL_DIR"
+(
+    cd "$SDXL_DIR" || exit 1
+    # Config
+    if [ ! -f "model_index.json" ]; then
+        echo "🔽 [CONFIG] model_index.json"
+        aria2c -x 4 -c --quiet "https://hf-mirror.com/stabilityai/stable-diffusion-xl-base-1.0/resolve/main/model_index.json" -o "model_index.json" || increment_error
+    fi
+    # Checkpoint
+    download_async_if_missing "https://hf-mirror.com/stabilityai/stable-diffusion-xl-base-1.0/resolve/main/sd_xl_base_1.0.safetensors" "sd_xl_base_1.0.safetensors"
+) &
 
-# 1. SDXL 基础模型 (文档阶段 1.1)
-download_model "stabilityai/stable-diffusion-xl-base-1.0" "sdxl-base-1.0"
+# ==========================================
+# 2. Fixed IP-Adapter Download (SDXL Only)
+# ==========================================
+# echo "📦 [2/3] Queuing IP-Adapter (SDXL)..."
+# IP_DIR="ip_adapter"
+# CLIP_DIR="$IP_DIR/image_encoder"
+# mkdir -p "$IP_DIR"
+# mkdir -p "$CLIP_DIR"
 
-# 2. IP-Adapter (文档阶段 2.1)
-# 参考: https://huggingface.co/tencent-ailab/IP-Adapter
-download_model "TencentARC/IP-Adapter" "ip-adapter"
+# (
+#     cd "$IP_DIR" || exit 1
 
-# 3. (可选) IP-Adapter 需要的 ViT-G 模型 (通常包含在上面的库中，但单独列出以防万一)
-# download_model "h94/IP-Adapter" "ip-adapter-files" 
+#     # --- 1. Download SDXL Adapter Weights ---
+#     # 根据图1: 文件位于 /sdxl_models/ 目录下
+#     # 我们下载标准的 Vit-H 版本
+#     echo "🔽 Downloading ip-adapter_sdxl_vit-h.safetensors..."
+#     download_async_if_missing "https://hf-mirror.com/h94/IP-Adapter/resolve/main/sdxl_models/ip-adapter_sdxl_vit-h.safetensors" "ip-adapter_sdxl_vit-h.safetensors"
 
-# 4. (可选) ControlNet Canny (文档阶段 2.2)
-download_model "lllyasviel/controlnet-canny-sdxl-1.0" "controlnet-canny"
+#     # --- 2. Download CLIP Vision Encoder ---
+#     # 根据图2: 文件位于 /sdxl_models/image_encoder/ 目录下 (注意路径变化)
+#     echo "🔽 Downloading CLIP Vision Encoder (Config & Weights)..."
+#     cd "../$CLIP_DIR" || exit 1
 
-# 5. (可选) LCM-LoRA (文档阶段 3.1)
-download_model "latent-consistency/lcm-lora-sdxl" "lcm-lora-sdxl"
+#     # 下载 config.json
+#     aria2c -x 8 -s 8 -c --quiet "https://hf-mirror.com/h94/IP-Adapter/resolve/main/sdxl_models/image_encoder/config.json" -o "config.json"
+#     if [ $? -ne 0 ]; then echo "❌ Failed: clip_vision config.json"; increment_error; fi
 
-echo "🎉 所有模型下载任务完成！"
-echo "📌 请确保这些文件在 Docker 构建上下文中。"
+#     # 下载 model.safetensors (CLIP Vision 权重)
+#     download_async_if_missing "https://hf-mirror.com/h94/IP-Adapter/resolve/main/sdxl_models/image_encoder/model.safetensors" "model.safetensors"
+
+# ) &
+
+# ==========================================
+# 3. Improved LLM Download (串行小文件 + 并行大文件) with Skip Logic
+# ==========================================
+echo "📦 [3/3] Downloading LLM (Qwen2.5 7B)..."
+LLM_DIR="llm/Qwen2.5-7B-Instruct"
+mkdir -p "$LLM_DIR"
+cd "$LLM_DIR" || exit 1
+
+BASE_URL="https://hf-mirror.com/Qwen/Qwen2.5-7B-Instruct/resolve/main"
+
+# --- Key Improvement: Check for critical config files first ---
+CRITICAL_CONFIGS=("config.json" "tokenizer_config.json")
+MISSING_CONFIGS=()
+for conf in "${CRITICAL_CONFIGS[@]}"; do
+    if [ ! -f "$conf" ]; then
+        MISSING_CONFIGS+=("$conf")
+    fi
+done
+
+if [ ${#MISSING_CONFIGS[@]} -gt 0 ]; then
+    echo "📝 [NEED CONFIG] Downloading missing config/tokenizer files: ${MISSING_CONFIGS[*]}"
+    # Define all required small files
+    SMALL_FILES=(
+        "config.json"
+        "generation_config.json"
+        "tokenizer_config.json"
+        "tokenizer.json"
+        "vocab.json"
+        "model.safetensors.index.json"
+    )
+
+    # Iterate and download only missing ones
+    for file in "${SMALL_FILES[@]}"; do
+        if [ ! -f "$file" ]; then
+            echo "🔽 [SERIAL] $file"
+            aria2c -x 4 -c --quiet "$BASE_URL/$file" -o "$file"
+            if [ $? -ne 0 ]; then
+                echo "❌ Failed to download small file: $file"
+                increment_error
+            fi
+        else
+            echo "⏭️  [SKIP] $file (already exists)"
+        fi
+    done
+else
+    echo "⏭️  [SKIP] All critical config files already exist, proceeding to shards."
+fi
+
+# --- Check for model shards ---
+SHARDS=(
+    "model-00001-of-00004.safetensors"
+    "model-00002-of-00004.safetensors"
+    "model-00003-of-00004.safetensors"
+    "model-00004-of-00004.safetensors"
+)
+
+MISSING_SHARDS=()
+for shard in "${SHARDS[@]}"; do
+    if [ ! -f "$shard" ]; then
+        MISSING_SHARDS+=("$shard")
+    fi
+done
+
+if [ ${#MISSING_SHARDS[@]} -gt 0 ]; then
+    echo "🚀 [NEED SHARDS] Downloading missing model shards: ${MISSING_SHARDS[*]}"
+    # Download remaining shards in parallel
+    for shard in "${SHARDS[@]}"; do
+        download_async_if_missing "${BASE_URL}/${shard}" "$shard"
+    done
+else
+    echo "⏭️  [SKIP] All model shards already exist."
+fi
+
+# ==========================================
+# 4. Wait for all tasks and finalize
+# ==========================================
+echo "⏳ Waiting for all downloads to complete... (This may take a while)"
+wait
+
+# 清理锁文件
+rm -f "$ERROR_LOCK"
+
+# 检查是否有错误
+if [ $ERRORS -gt 0 ]; then
+    echo "❌ CRITICAL: Download completed with $ERRORS errors. Please check logs."
+    exit 1
+else
+    echo "✅ ALL downloads completed successfully or skipped (if already present)! Enjoy your models."
+fi
