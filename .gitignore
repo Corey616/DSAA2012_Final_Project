@@ -1,6 +1,7 @@
 .env
 .vscode
 models/*
+results/*
 __pycache__
 *.pyc
 *.pyo
@@ -11,3 +12,4 @@ __pycache__
 *.manifest
 *.spec
 node_modules
+demo_test.ipynb
