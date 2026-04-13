@@ -59,9 +59,143 @@ mkdir -p "$SDXL_DIR"
 ) &
 
 # ==========================================
-# 2. Fixed IP-Adapter Download (SDXL Only)
+# 2. IP-Adapter Download with Exact Pattern
 # ==========================================
-##TODO
+download_ipadapter_exact_pattern() {
+    echo "📦 [2/3] Downloading IP-Adapter by exact pattern: sdxl_models/*.safetensors, sdxl_models/image_encoder/*"
+    
+    IPADAPTER_DIR="ip-adapter"
+    mkdir -p "$IPADAPTER_DIR"
+    cd "$IPADAPTER_DIR" || { 
+        echo "❌ Cannot enter $IPADAPTER_DIR"
+        increment_error
+        return 1
+    }
+    
+    BASE_URL="https://hf-mirror.com/h94/IP-Adapter/resolve/main"
+    
+    # 创建下载列表文件
+    INPUT_FILE="ipadapter_download_list.txt"
+    
+    # 根据你的规则，我们需要先获取文件列表
+    echo "🔍 Fetching file list from HuggingFace..."
+    
+    # 方法1：使用 huggingface-hub Python 库（如果可用）
+    if python3 -c "import huggingface_hub" 2>/dev/null; then
+        python3 << 'EOF'
+import os
+from huggingface_hub import HfApi, hf_hub_url
+import sys
+
+api = HfApi()
+files = api.list_repo_files(repo_id="h94/IP-Adapter", repo_type="model")
+
+# 过滤出符合规则的文件
+pattern1 = "sdxl_models/"
+pattern2 = "models/image_encoder/"
+
+for file in files:
+    if (file.startswith("sdxl_models/") and file.endswith(".safetensors")) or \
+       file.startswith("models/image_encoder/"):
+        # 构造下载URL
+        url = f"https://hf-mirror.com/h94/IP-Adapter/resolve/main/{file}"
+        print(url)
+EOF
+    else
+        # 方法2：硬编码已知文件
+        echo "⚠️ huggingface_hub not available, using hardcoded list"
+        cat << 'EOF'
+https://hf-mirror.com/h94/IP-Adapter/resolve/main/sdxl_models/ip-adapter_sdxl_vit-h.safetensors
+https://hf-mirror.com/h94/IP-Adapter/resolve/main/sdxl_models/ip-adapter-plus_sdxl_vit-h.safetensors
+https://hf-mirror.com/h94/IP-Adapter/resolve/main/sdxl_models/ip-adapter-plus-face_sdxl_vit-h.safetensors
+https://hf-mirror.com/h94/IP-Adapter/resolve/main/models/image_encoder/config.json
+https://hf-mirror.com/h94/IP-Adapter/resolve/main/models/image_encoder/preprocessor_config.json
+https://hf-mirror.com/h94/IP-Adapter/resolve/main/models/image_encoder/model.safetensors
+https://hf-mirror.com/h94/IP-Adapter/resolve/main/models/image_encoder/pytorch_model.bin
+EOF
+    fi > "$INPUT_FILE"
+    
+    # 检查文件数量
+    FILE_COUNT=$(wc -l < "$INPUT_FILE" 2>/dev/null || echo "0")
+    if [ "$FILE_COUNT" -eq 0 ]; then
+        echo "❌ Failed to get file list"
+        # 回退到手动列表
+        cat > "$INPUT_FILE" << 'EOF'
+https://hf-mirror.com/h94/IP-Adapter/resolve/main/sdxl_models/ip-adapter_sdxl_vit-h.safetensors
+https://hf-mirror.com/h94/IP-Adapter/resolve/main/sdxl_models/ip-adapter-plus_sdxl_vit-h.safetensors
+https://hf-mirror.com/h94/IP-Adapter/resolve/main/sdxl_models/ip-adapter-plus-face_sdxl_vit-h.safetensors
+https://hf-mirror.com/h94/IP-Adapter/resolve/main/models/image_encoder/config.json
+https://hf-mirror.com/h94/IP-Adapter/resolve/main/models/image_encoder/preprocessor_config.json
+https://hf-mirror.com/h94/IP-Adapter/resolve/main/models/image_encoder/model.safetensors
+EOF
+        FILE_COUNT=$(wc -l < "$INPUT_FILE")
+    fi
+    
+    echo "📄 Found $FILE_COUNT files matching pattern"
+    
+    # 使用 aria2c 批量下载
+    echo "🚀 Starting aria2c batch download..."
+    aria2c \
+        -i "$INPUT_FILE" \
+        -j 3 \
+        -x 8 \
+        -s 8 \
+        -c \
+        --auto-file-renaming=false \
+        --conditional-get=true \
+        --file-allocation=none \
+        --summary-interval=0 \
+        --max-tries=5 \
+        --retry-wait=3 \
+        --connect-timeout=10 \
+        --timeout=30 \
+        --quiet=false
+    
+    if [ $? -ne 0 ]; then
+        echo "⚠️ Some downloads may have failed"
+    fi
+    
+    # 验证下载的文件
+    echo "🔍 Verifying downloaded files..."
+    MISSING=0
+    while IFS= read -r url; do
+        if [ -z "$url" ]; then continue; fi
+        
+        # 提取文件名
+        filename=$(echo "$url" | sed 's|.*/||')
+        dirpath=$(echo "$url" | sed -n 's|.*IP-Adapter/resolve/main/||p' | sed "s|/$filename||")
+        
+        if [ -n "$dirpath" ] && [ "$dirpath" != "$filename" ]; then
+            filepath="$dirpath/$filename"
+        else
+            filepath="$filename"
+        fi
+        
+        if [ ! -f "$filepath" ]; then
+            echo "❌ Missing: $filepath"
+            MISSING=$((MISSING + 1))
+        else
+            filesize=$(stat -f%z "$filepath" 2>/dev/null || stat -c%s "$filepath" 2>/dev/null || echo "0")
+            if [ "$filesize" -lt 1000 ]; then
+                echo "⚠️  Suspiciously small: $filepath ($filesize bytes)"
+            else
+                echo "✅ OK: $filepath"
+            fi
+        fi
+    done < "$INPUT_FILE"
+    
+    if [ "$MISSING" -gt 0 ]; then
+        echo "⚠️  $MISSING files are missing"
+    else
+        echo "✅ All files downloaded successfully"
+    fi
+    
+    # 清理
+    rm -f "$INPUT_FILE"
+    
+    cd "$ROOT_DIR/models" || return
+}
+download_ipadapter_exact_pattern
 
 # ==========================================
 # 3. Improved LLM Download (串行小文件 + 并行大文件) with Skip Logic
