@@ -74,6 +74,9 @@ class PipelineRunner:
                 print(f"⚠️ 警告: 参考图像 {potential_ref} 不存在，将进行纯文本生成。")
                 # 如果文件不存在（比如第一次跑），降级为 txt2img
 
+        GLOBAL_STYLE = "Clean storyboard-style digital illustration, soft ink outlines, flat-wash color fills, mild cel-shading, warm and approachable color palette, 2d art style"
+        prompt = f"{GLOBAL_STYLE}, {prompt}"
+        
         print(f"\n--- 正在处理 Panel {index} ---")
         
         # 3. 调用生成器
@@ -83,7 +86,7 @@ class PipelineRunner:
             negative_prompt=negative_prompt,
             reference_image_path=actual_ref_path, # 传给 SDXL
             # 可以在这里覆盖默认参数
-            ip_adapter_scale=0.4 if actual_ref_path else None # 第一帧不需要 scale
+            ip_adapter_scale=0.6 if actual_ref_path else None # 第一帧不需要 scale
         )
 
 # --- Main Entry ---

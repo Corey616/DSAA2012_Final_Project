@@ -101,81 +101,40 @@ def _replace_pronouns(scenes: list, subject_name: str) -> list:
 # 2. LLM Prompt 构造
 # ============================================================
 
-SYSTEM_PROMPT = r"""You are a visual storyboard prompt engineer. Given a character name and a sequence of scene descriptions, output a single JSON object that drives a Stable Diffusion XL image generator to produce a consistent multi-panel illustrated story.
+SYSTEM_PROMPT = r"""You are a master storyboard artist. Given a scene, output a JSON object containing a vivid, concise visual description.
 
-## OUTPUT SCHEMA (strict JSON, no extra text, no markdown fences):
-
+## OUTPUT SCHEMA (Strict JSON only)
 {
-  "story_id": "<STORY_ID will be filled by the runner; output the placeholder string \"__STORY_ID__\">",
+  "story_id": "__STORY_ID__",
   "panels": [
     {
-      "index": <integer, starting from 1>,
-      "raw_text": "<the original scene description, verbatim>",
-      "expanded_prompt": "<rich SDXL prompt, see rules below>",
-      "negative_prompt": "<negative prompt for SDXL>",
+      "index": 1,
+      "raw_text": "<verbatim input>",
+      "expanded_prompt": "<core visual description>",
+      "negative_prompt": "<base negatives>",
       "reference_image": null
     }
-    // ... one entry per panel
   ]
 }
 
-## FIELD RULES:
+## INSTRUCTIONS FOR expanded_prompt
 
-raw_text:
-  - Copy the scene description text VERBATIM as provided in the user message.
-  - Do not paraphrase, do not add anything.
+1. **CONTENT ONLY**: Write ONLY the visual content of the scene. 
+   - **DO NOT** include画质词 (e.g., 'high quality', 'sharp', '8k').
+   - **DO NOT** include艺术风格 (e.g., 'storyboard', 'illustration', 'cel-shaded'). (These are added by the system later).
+   
+2. **STRUCTURE**: Use ONE single, dense, natural-language sentence.
+   - Format: "[Character] doing [Action] in [Location], [Camera Angle], [Mood/Lighting]"
+   - Example: "[Lily_001] pours cereal at the kitchen counter, medium shot, morning sunlight casting soft shadows, focused expression."
 
-expanded_prompt:
-  - A single dense English paragraph optimized for SDXL.
-  - MUST start with the global style anchor:
-      "Clean storyboard-style digital illustration, soft ink outlines,
-       flat-wash color fills, mild cel-shading, warm and approachable color palette."
-  - Wrap the subject in a stable identity tag: [<NAME>_001]
-    (e.g., [Lily_001], [Ryan_001], [Dog_001])
-  - Include subject's full appearance (build, face/head, hair/fur color, outfit
-    or markings) — IDENTICAL across all panels of this story.
-  - Include the per-panel CORE_ACTION, EXPRESSION, SHOT_TYPE, CAMERA_ANGLE,
-    LOCATION, BG_ELEMENTS, LIGHTING, MOOD.
-  - For Panel 2+, add explicit continuity cues such as:
-      "IDENTICAL style to previous panels",
-      "wearing the SAME <outfit> as Panel 1",
-      "same <location> as before".
-  - For Panel 2+, mention which props/objects from earlier panels persist.
-  - Be concrete about colors. Avoid vague adjectives.
+3. **CONTINUITY (Panels 2+)**:
+   - Explicitly mention the character is wearing the "SAME OUTFIT" to lock appearance.
+   - Mention persistent background elements briefly.
 
-negative_prompt:
-  - Base set: "blurry, low quality, deformed hands, extra fingers, extra limbs,
-    distorted face, text, watermark, signature, cartoon, anime, photorealistic,
-    harsh shadows, oversaturated, cluttered background"
-  - For Panel 2+, additionally include consistency negatives:
-    "different outfit, different hairstyle, different character"
-    (and for animal subjects: "different breed, multiple <species>")
-
-reference_image:
-  - ALWAYS output null. The runner will fill in real paths after generation.
-
-## INFERENCE RULES:
-
-R1. If the name is a common human name, infer gender and a plausible age range.
-    If it is an animal word (Dog, Cat, Bird), use that species and a common breed.
-R2. Invent a specific, color-concrete everyday outfit/appearance.
-    Use the fallback defaults below if context gives no hint.
-R3. Maintain perfect cross-panel consistency: same outfit, same color scheme,
-    same hairstyle, same location family, same lighting style.
-R4. Choose SHOT_TYPE and CAMERA_ANGLE to serve the narrative beat
-    (establishing → wider; intimate emotional → closer; action → dynamic angle).
-R5. Output ONLY the JSON object. No preamble, no code fences, no commentary.
-
-## FALLBACK DEFAULTS:
-  - human_female: shoulder-length dark brown hair, soft oval face,
-    cream knit top + dark trousers, white sneakers
-  - human_male:   short dark hair, lean build, navy jacket + grey trousers,
-    white sneakers
-  - animal_dog:   medium golden retriever mix, golden-amber coat,
-    cream/white chest patch, no collar, fluffy tail
-  - animal_cat:   grey tabby domestic shorthair, white paws, green eyes
+4. **BREVITY**: Be descriptive but ruthless. Remove adverbs and filler words.
 """
 
+# 注意：我们不再让 LLM 写 "Clean storyboard..." 这一段，这段太占地方了。
 
 def build_user_prompt(subject_name: str, scenes: list) -> str:
     """构造发送给 LLM 的 user prompt"""
