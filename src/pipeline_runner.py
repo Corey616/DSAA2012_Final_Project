@@ -83,7 +83,7 @@ class EnhancedPipelineRunner:
         # 可选保存JSON
         if save_json:
             json_dir = self.results_root / "json_data"
-            json_dir.mkdir(exist_ok=True)
+            json_dir.mkdir(parents=True, exist_ok=True)
             json_path = json_dir / f"data{story_id.zfill(2)}.json"
             with open(json_path, "w", encoding="utf-8") as f:
                 json.dump(story_data, f, indent=2, ensure_ascii=False)
