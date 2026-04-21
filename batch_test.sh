@@ -28,7 +28,7 @@ for file in "$INPUT_DIR"/!(extra_*.txt); do
     if [[ -f "$file" && "$file" == *.txt ]]; then
         ((found++))
         echo "Processing: $file with GPU $CUDA_VISIBLE_DEVICES"
-        python src/pipeline_runner.py --input "$file"
+        python src/pipeline_runner.py --input "$file" --save_json
         if [[ $? -ne 0 ]]; then
             echo "Error processing $file, exiting..."
             exit 1
