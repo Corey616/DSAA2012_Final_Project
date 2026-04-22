@@ -2,12 +2,15 @@
 """
 llm_processor.py
 ================
-Refactored: Character recognition and consistency anchoring delegated entirely to LLM.
-Core Strategy:
-1. Keep all pronouns and tags (<Lily>, She/Her), let LLM resolve references
-2. Force LLM to define character IDs ([Lily_001]) in first frame, strictly reuse in subsequent
-3. For new characters, require LLM to assign new IDs explicitly
-4. Output maintains path injection and JSON Schema
+Multi-turn Reasoning Architecture for Storyboard Generation.
+
+Phase 1: Story Analysis - Analyze narrative structure, identify core elements, define panel boundaries
+Phase 2: Visual Prompt Generation - Generate detailed prompts based on refined story descriptions
+
+Key Design Principles:
+- Explicit descriptions only (no "the same", no pronouns for visual elements)
+- Multi-turn dialogue for iterative refinement
+- Each turn preserves context from previous turns
 """
 
 import argparse
@@ -21,13 +24,12 @@ from transformers import AutoModelForCausalLM, AutoTokenizer
 os.environ.setdefault('HF_ENDPOINT', 'https://hf-mirror.com')
 
 # ============================================================
-# Section 1: Input Parsing (Pronoun replacement removed)
+# Section 1: Input Parsing
 # ============================================================
 
 def parse_raw_input(raw_text: str) -> dict:
     """
     Parse raw input, preserve all pronouns and tags, no text replacement.
-    Extract first frame <Name> as default subject name (for prompt construction only).
     """
     blocks = re.split(r'\[SEP\]', raw_text, flags=re.IGNORECASE)
     blocks = [b.strip() for b in blocks if b.strip()]
@@ -36,10 +38,8 @@ def parse_raw_input(raw_text: str) -> dict:
     default_subject = None
 
     for i, block in enumerate(blocks):
-        # Remove [SCENE-N] markers, preserve original text (with <Lily> and She/Her)
         text = re.sub(r'\[SCENE-\d+\]\s*', '', block).strip()
         
-        # Only extract <Name> from first frame as default subject (for prompt context)
         if i == 0:
             name_match = re.search(r'<(\w+)>', text)
             if name_match:
@@ -50,227 +50,320 @@ def parse_raw_input(raw_text: str) -> dict:
     if default_subject is None:
         default_subject = "Subject"
 
-    # Backward compatibility: return both keys
     return {
-        "subject_name": default_subject,  # For pipeline_runner.py compatibility
-        "default_subject": default_subject,  # New interface
+        "subject_name": default_subject,
+        "default_subject": default_subject,
         "scenes": scenes
     }
 
 # ============================================================
-# Section 2: LLM Prompt (Visual expansion + Character ID anchoring + Gender/Outfit consistency)
+# Section 2: Multi-Turn System Prompts
 # ============================================================
 
-SYSTEM_PROMPT = r"""You are an expert visual prompt engineer specializing in multi-character storyboard generation. Your task is to create precise prompts that ensure accurate action representation and character consistency.
-
-# ============================
-# CRITICAL: CHARACTER COUNT DETECTION
-# ============================
-
-You MUST detect the number of characters in the story FIRST:
-- SINGLE CHARACTER: Only one name in angle brackets <Name>
-- MULTI-CHARACTER: Two or more names like <Jack> and <Sara>
-
-Use the corresponding rules below based on character count.
-
-# ============================
-# RULES FOR SINGLE-CHARACTER SCENES
-# ============================
-
-## ID & Appearance (Panel 1)
-1. Extract character name, assign [Name_001] ID
-2. CRITICAL GENDER: Look up the name to determine gender. "Ryan" = man, "Lily" = woman
-3. Describe in this EXACT order: [ID], a [gender], with [hair], wearing [complete outfit], [action verb in present continuous], [specific pose and movement details], [location context], [lighting]
-
-## Action Keywords (MUST USE THESE for accuracy)
-- "sits down" -> "lowers body onto chair, weight shifting, legs bending at knees"
-- "walks" -> "steps forward with alternating feet, arms swinging naturally"
-- "runs" -> "legs in running stride, arms pumping, body leaning forward"
-- "looks out" -> "head turned to the side, eyes gazing through window"
-- "pauses" -> "stops mid-stride, one foot slightly raised, frozen in motion"
-- "eats" -> "hand bringing food to mouth, chewing motion"
-- "reads" -> "eyes focused downward on book, head slightly tilted"
-
-## Single-Character Negative Prompt (MUST USE):
-"blurry, distorted, deformed, extra limbs, floating, disconnected body parts, wrong pose, stiff pose, static, wrong outfit color, wrong hairstyle, duplicate character, shadow anomaly, lighting inconsistency"
-
-## Subsequent Panels (2+)
-- Repeat ID + "a [gender] wearing the same [outfit]" EXACTLY
-- Focus on NEW action with specific pose keywords
-- Include environmental changes clearly
-- NEVER change outfit or appearance
-
-# ============================
-# RULES FOR MULTI-CHARACTER SCENES (CRITICAL)
-# ============================
-
-## Panel 1: Establishing Shot
-1. List characters in LEFT-TO-RIGHT spatial order as they appear in text order
-2. Use "on the left" / "on the right" / "in the center" for positioning
-3. Each character gets FULL description on Panel 1
-4. Separate characters with "and" in the prompt
-5. CRITICAL: Only include characters that appear in the scene text - do NOT add other characters
-
-## Multi-Character Prompt Template:
-"[Character1_ID], a [gender1] with [hair1] wearing [outfit1], [action1] on the left side, and [Character2_ID], a [gender2] with [hair2] wearing [outfit2], [action2] on the right side, [shared activity or interaction], [clear background], [lighting]"
-
-## Multi-Character Consistency Rules (STRICT):
-1. FIRST describe Character1 completely with ID
-2. THEN describe Character2 completely with DIFFERENT ID
-3. Use VISUAL DISTINGUISHERS: different hair colors, different outfit colors, different body types
-4. NEVER merge characters: use "Character1 on left, Character2 on right" structure
-5. Use "INDIVIDUALLY" keyword if characters do different things simultaneously
-6. Use "TOGETHER" keyword if characters do the same thing together
-
-## Multi-Character Negative Prompt (MUST USE):
-"blurry, distorted, deformed, extra limbs, floating, disconnected body parts, wrong pose, stiff pose, static, wrong outfit color, wrong hairstyle, character blending, merged characters, Siamese twins, shared body parts, confused identity, swapped faces, duplicate character, three people when should be two, solo character when should be two, background character interfering, shadow anomaly, lighting inconsistency"
-
-## Panel 2+ for Multi-Character
-- ALWAYS restate BOTH character IDs and outfits at the start
-- Example: "[Jack_001], a man wearing the same blue shirt and jeans, and [Sara_002], a woman wearing the same white blouse and denim shorts, [new action with positioning]"
-- Use directional cues: "Jack turns to face Sara", "Sara stands beside Jack"
-- If in different environment, still describe both characters clearly
-
-## NEW CHARACTER INTRODUCTION (CRITICAL)
-- **STRICT RULE**: Only describe characters that are EXPLICITLY mentioned in the raw_text
-- Panel 1 text says "<Nina> stands..." -> ONLY describe Nina, do NOT mention Leo
-- Panel 2 text says "She meets <Leo>..." -> Describe Nina (continuing) + Leo (NEW)
-- Panel 3 text says "They look at each other" -> Describe BOTH Nina and Leo
-- If a character is NOT in the current scene's raw_text -> DO NOT include them
-- Example for story "Nina stands in snow. She meets Leo in crowd.":
-  - Panel 1: "[Nina_001], woman, dark brown hair, red coat, black boots, stands alone in snow, cold winter atmosphere."
-  - Panel 2: "[Nina_001], woman, same red coat and black boots, stands in crowd, turns to look, and [Leo_002], man, brown hair, green jacket, approaches from right, both greeting each other."
-  - Panel 3: "[Nina_001], woman, same red coat and black boots, and [Leo_002], man, same green jacket, stand facing each other, quiet moment, eye contact."
-- NEVER fabricate characters that don't appear in the text
-
-# ============================
-# COMMON RULES (ALL SCENES)
-# ============================
-
-## Outfit Consistency
-- Panel 1: FULL outfit description with colors
-- Panel 2+: "wearing the same [color] [garment type]" - use EXACT color words from Panel 1
-- NEVER change colors between panels
-
-## Pose & Action Specificity
-- Use VERBS in present continuous (-ing form)
-- Include body part movements: "arm raised", "head turned", "legs apart"
-- Include facial expression hints: "with a smile", "expression of surprise", "gazing intently"
-
-## Environment & Lighting
-- Panel 1: Rich environment description
-- Panel 2+: Focus on character, mention environment changes
-
-## CLIP Token Limit (CRITICAL)
-- SDXL CLIP encoder limit: 77 tokens
-- Keep prompts under 60 words per panel
-- Put CRITICAL details FIRST: character ID, outfit, main action, pose
-- Put LESS critical details LAST: background, lighting
-- For multi-character: prioritize character descriptions over environment
-- ABBREVIATE when possible: "blue sky" instead of "clear blue sky with fluffy white clouds"
-
-## Forbidden Terms
-- NO: "masterpiece", "8k", "ultra-realistic", "trending", "best quality"
-- NO: Generic terms like "the girl/man" - use IDs only
-- NO: Conflicting outfit descriptions
-
-# ============================
-# OUTPUT SCHEMA (STRICT JSON)
-# ============================
-
-For SINGLE CHARACTER story (keep under 50 words per prompt):
-{
-  "story_id": "01",
-  "panels": [
-    {
-      "index": 1,
-      "raw_text": "<Lily> makes breakfast in the kitchen.",
-      "expanded_prompt": "[Lily_001], woman, blonde ponytail, white blouse, blue jeans, reaches for pan at counter, cracks egg, kitchen, morning light.",
-      "negative_prompt": "blurry, distorted, deformed, extra limbs, floating, wrong pose, stiff, static, wrong outfit, wrong hair, duplicate character",
-      "reference_image": null
-    },
-    {
-      "index": 2,
-      "raw_text": "She looks out the window quietly.",
-      "expanded_prompt": "[Lily_001], woman, same white blouse and blue jeans, stands by window, head turned, gazes outside, quiet expression, hand on sill.",
-      "negative_prompt": "blurry, distorted, deformed, extra limbs, floating, wrong pose, stiff, static, wrong outfit, wrong hair, duplicate character",
-      "reference_image": "results/01/panel_1.png"
-    }
-  ]
+# Character name to gender mapping (for reference)
+NAME_GENDER_MAP = {
+    "Ryan": "man", "Lily": "woman", "Jack": "man", "Sara": "woman",
+    "Leo": "man", "Nina": "woman", "Max": "man", "Anna": "woman",
+    "Tom": "man", "Lucy": "woman", "Ben": "man", "Emma": "woman",
+    "David": "man", "Sophie": "woman", "Mike": "man", "Kate": "woman",
 }
 
-For MULTI-CHARACTER story (keep under 55 words per prompt):
-{
-  "story_id": "06",
-  "panels": [
-    {
-      "index": 1,
-      "raw_text": "<Jack> and <Sara> sit in a park and talk.",
-      "expanded_prompt": "[Jack_001], man, brown hair, beard, blue shirt, khaki shorts, sits on left bench, and [Sara_002], woman, blonde wavy hair, white blouse, denim jeans, sits on right bench, talking, park, blue sky.",
-      "negative_prompt": "blurry, distorted, deformed, extra limbs, floating, wrong pose, stiff, static, wrong outfit, wrong hair, character blending, merged, Siamese twins, swapped faces, three people, solo character",
-      "reference_image": null
-    },
-    {
-      "index": 2,
-      "raw_text": "They continue talking in a cafe.",
-      "expanded_prompt": "[Jack_001], man, same blue shirt and khaki shorts, sits at cafe table on left, leans forward, and [Sara_002], woman, same white blouse and denim jeans, sits across on right, holds coffee cup, talking, cafe interior.",
-      "negative_prompt": "blurry, distorted, deformed, extra limbs, floating, wrong pose, stiff, static, wrong outfit, wrong hair, character blending, merged, Siamese twins, swapped faces, three people, solo character",
-      "reference_image": "results/06/panel_1.png"
-    }
-  ]
+# Common hair colors for different names (fallback)
+NAME_HAIR_MAP = {
+    "Ryan": "short brown hair", "Lily": "blonde hair in ponytail",
+    "Jack": "brown hair with beard", "Sara": "blonde wavy hair",
+    "Leo": "brown hair", "Nina": "dark brown hair",
+    "Max": "black short hair", "Anna": "long black hair",
+    "Tom": "red short hair", "Lucy": "auburn hair",
+    "Ben": "brown curly hair", "Emma": "brown long hair",
+    "David": "black hair", "Sophie": "blonde hair",
+    "Mike": "brown hair", "Kate": "black long hair",
 }
+
+SYSTEM_PROMPT_PHASE1 = r"""You are a story structure analyst for multi-panel storyboard generation. Your task is to analyze the narrative and break it down into coherent panels with detailed descriptions.
+
+## Your Analysis Process
+
+### Step 1: Character Identification
+- List ALL characters appearing in the story
+- For each character, determine: name, gender, hair style, outfit (top color, bottom color, shoes)
+- Assign unique IDs: [CharacterName_001], [CharacterName_002], etc.
+
+### Step 2: Core Scene Elements
+- Identify objects that MUST appear across multiple panels (visual anchors)
+- Examples: bus, kitchen counter, window, table, book, coffee cup
+
+### Step 3: Panel-by-Panel Analysis
+For EACH panel, provide:
+1. **Scene Setting**: Where is this taking place?
+2. **Characters Present**: Which characters appear in this panel?
+3. **Action Description**: What is each character doing? (Use present continuous tense)
+4. **Environmental Details**: What objects/background are visible?
+5. **Temporal Context**: Time of day, lighting quality
+
+### Step 4: Continuity Check
+- List how each panel connects to the previous one
+- Identify what objects remain in scene from previous panel
+- Note any new objects introduced or old objects removed
+
+## Output Format
+
+Provide your analysis in this structured format:
+
+```
+STORY STRUCTURE ANALYSIS
+========================
+
+Characters:
+- [CharacterID]: name, gender, hair style, outfit (top color + type, bottom color + type, shoe color + type)
+
+Core Scene Elements (appear in multiple panels):
+- [Element 1]: description
+- [Element 2]: description
+
+Panel 1 Analysis:
+- Setting: [location description]
+- Characters: [list of character IDs present]
+- Actions: [detailed action description]
+- Environment: [visible objects and background]
+- Lighting: [lighting quality and direction]
+
+Panel 2 Analysis:
+- Setting: [location description]
+- Characters: [list of character IDs present]
+- Actions: [detailed action description]
+- Environment: [visible objects - emphasize continuity from Panel 1]
+- Lighting: [lighting quality and direction]
+- Transition from Panel 1: [what connects this to Panel 1]
+
+Panel 3 Analysis:
+[...same structure...]
+```
+
+IMPORTANT:
+- Be EXPLICIT about colors, shapes, and positions
+- Do NOT use pronouns like "it", "they", "the same" - always describe explicitly
+- Each panel's environment should reference objects from previous panels
 """
 
-def build_user_prompt(default_subject: str, scenes: list) -> str:
-    """Construct User Prompt with enhanced multi-character and action-specific guidance"""
+SYSTEM_PROMPT_PHASE2 = r"""You are a visual prompt engineer. Based on the story analysis provided, generate detailed image prompts for each panel.
+
+## Critical Rules
+
+### EXPLICIT Description Only
+- NEVER use: "the same", "same as", "also wearing", "still has"
+- ALWAYS use: Full explicit description of appearance in EVERY panel
+
+### Required Description Elements Per Panel
+1. Character Appearance (in EVERY panel, not abbreviated):
+   - Character ID
+   - Gender
+   - Hair color and style (full description)
+   - Top: color + garment type (e.g., "gray hoodie")
+   - Bottom: color + garment type (e.g., "blue jeans")
+   - Shoes: color + type (e.g., "black sneakers")
+
+2. Action Description:
+   - Verb in present continuous (-ing form)
+   - Specific body movements (arms, legs, head position)
+   - Facial expression hints
+
+3. Scene Description:
+   - Location setting
+   - Key objects present (explicitly described with colors)
+   - Background elements
+
+4. Lighting:
+   - Quality: morning light, afternoon light, evening light, dim light, soft light
+   - Direction if notable
+
+### Multi-Character Positioning
+- Use LEFT and RIGHT explicitly
+- Example: "[Character1] on the left, [Character2] on the right"
+- NEVER assume spatial relationships - always state them
+
+### Forbidden Terms
+- "the same [clothing item]"
+- "also wearing"
+- "still wearing"
+- "same as before"
+- "like in previous panel"
+
+### Negative Prompt Template
+Use this exact format (modify character count based on story):
+- Single character: "blurry, distorted, deformed, extra limbs, floating, wrong pose, stiff, static, wrong outfit color, wrong hairstyle, duplicate character"
+- Multi-character: Add "character blending, merged, Siamese twins, swapped faces, three people when should be two, solo character when should be two"
+
+## Output Format
+
+Generate pure JSON:
+{
+  "story_id": "[number]",
+  "panels": [
+    {
+      "index": 1,
+      "raw_text": "[original scene text]",
+      "expanded_prompt": "[EXPLICIT detailed prompt - no pronouns, no 'same', full description]",
+      "negative_prompt": "[negative prompt]",
+      "reference_image": null
+    },
+    {
+      "index": 2,
+      "raw_text": "[original scene text]",
+      "expanded_prompt": "[EXPLICIT detailed prompt - include full character appearance again]",
+      "negative_prompt": "[negative prompt]",
+      "reference_image": "results/[id]/panel_1.png"
+    }
+  ]
+}
+
+IMPORTANT:
+- expanded_prompt must contain FULL character description for EACH panel
+- Do NOT abbreviate or use references to previous panels
+- Keep prompt under 70 words but make it COMPLETE
+"""
+
+# ============================================================
+# Section 3: Build User Prompts for Each Phase
+# ============================================================
+
+def build_phase1_user_prompt(scenes: list) -> str:
+    """Build user prompt for Phase 1: Story Analysis"""
     scene_blocks = []
     for s in scenes:
         scene_blocks.append(f"[SCENE-{s['index']}] {s['text']}")
     
     scenes_text = "\n".join(scene_blocks)
     
-    # Detect multi-character
+    # Detect characters
     all_text = " ".join([s['text'] for s in scenes])
     names = re.findall(r'<(\w+)>', all_text)
-    unique_names = list(dict.fromkeys(names))  # Preserve order, remove duplicates
-    is_multi = len(unique_names) > 1
-    char_list = ", ".join([f"<{n}>" for n in unique_names])
+    unique_names = list(dict.fromkeys(names))
     
-    scene_type_hint = "MULTI-CHARACTER" if is_multi else "SINGLE-CHARACTER"
-    
-    return f"""
-Input Story Sequence:
+    return f"""Analyze the following story and break it down into panels:
+
 {scenes_text}
 
-## Scene Analysis
-Characters detected: {char_list}
-Scene type: {scene_type_hint}
-Number of scenes: {len(scenes)}
-IMPORTANT: Generate EXACTLY {len(scenes)} panels, one for each scene. Do NOT merge scenes.
+Detected characters: {', '.join(unique_names)}
+Number of panels to generate: {len(scenes)}
 
-## Processing Instructions
+Please perform the full story structure analysis as instructed in your system prompt.
+"""
 
-1. FIRST determine scene type: SINGLE or MULTI-CHARACTER
-2. For MULTI-CHARACTER: Use LEFT-RIGHT positioning, describe BOTH characters fully in Panel 1
-3. For SINGLE-CHARACTER: Focus on precise pose and action description
-4. CRITICAL: Generate EXACTLY {len(scenes)} panels - one panel per scene
-5. CRITICAL: Use specific action verbs and body part movements in present continuous form
-6. CRITICAL: Use scenario-specific negative prompts (see system prompt)
-7. Outfit colors MUST be identical across all panels
-8. story_id MUST match the input file number
-9. Output pure JSON matching the schema. No commentary outside JSON.
+def build_phase2_user_prompt(scenes: list, phase1_analysis: str) -> str:
+    """Build user prompt for Phase 2: Visual Prompt Generation"""
+    scene_blocks = []
+    for s in scenes:
+        scene_blocks.append(f"[SCENE-{s['index']}] {s['text']}")
+    
+    scenes_text = "\n".join(scene_blocks)
+    
+    # Detect characters
+    all_text = " ".join([s['text'] for s in scenes])
+    names = re.findall(r'<(\w+)>', all_text)
+    unique_names = list(dict.fromkeys(names))
+    is_multi = len(unique_names) > 1
+    
+    character_count_hint = "MULTI-CHARACTER story" if is_multi else "SINGLE-CHARACTER story"
+    
+    return f"""Based on the following story analysis, generate explicit visual prompts for each panel:
+
+## Original Story
+{scenes_text}
+
+## Story Analysis (from Phase 1)
+{phase1_analysis}
+
+Story type: {character_count_hint}
+Number of panels: {len(scenes)}
+
+## Instructions
+1. Generate EXACTLY {len(scenes)} panels
+2. For EACH panel, provide COMPLETE character descriptions (do NOT abbreviate)
+3. NEVER use "the same", "also wearing", etc. - always write full explicit descriptions
+4. Each prompt should describe: character appearance, action, scene, lighting
+5. Output ONLY the JSON, no commentary
+"""
+
+def build_refinement_user_prompt(scenes: list, previous_prompts: list) -> str:
+    """Build user prompt for Phase 3: Prompt Refinement (if needed)"""
+    scene_blocks = []
+    for s in scenes:
+        scene_blocks.append(f"[SCENE-{s['index']}] {s['text']}")
+    
+    scenes_text = "\n".join(scene_blocks)
+    
+    prompts_text = "\n\n".join([
+        f"Panel {i+1}: {p}" for i, p in enumerate(previous_prompts)
+    ])
+    
+    return f"""Review and refine the following visual prompts for better consistency:
+
+## Original Story
+{scenes_text}
+
+## Current Prompts
+{prompts_text}
+
+## Review Checklist
+1. Are all character appearances described explicitly in each panel?
+2. Is the continuity between panels maintained (same objects, smooth transitions)?
+3. Are there any pronouns like "the same", "also wearing" that should be replaced?
+4. Is each panel's scene clearly defined with specific objects?
+
+If any prompts need correction, provide the improved version. Output the complete refined JSON.
 """
 
 # ============================================================
-# Section 3: LLM Loading and Inference (China-friendly with HF-Mirror)
+# Section 3.5: Backward Compatibility Layer (SYSTEM_PROMPT only)
+# ============================================================
+
+# Combined SYSTEM_PROMPT for single-stage mode (pipeline_runner compatibility)
+SYSTEM_PROMPT = SYSTEM_PROMPT_PHASE1 + "\n\n" + SYSTEM_PROMPT_PHASE2
+
+def build_user_prompt(default_subject: str, scenes: list) -> str:
+    """
+    Build user prompt for single-stage mode (backward compatibility).
+    Uses multi-turn analysis internally but returns unified result.
+    """
+    scene_blocks = []
+    for s in scenes:
+        scene_blocks.append(f"[SCENE-{s['index']}] {s['text']}")
+    
+    scenes_text = "\n".join(scene_blocks)
+    
+    # Detect characters
+    all_text = " ".join([s['text'] for s in scenes])
+    names = re.findall(r'<(\w+)>', all_text)
+    unique_names = list(dict.fromkeys(names))
+    is_multi = len(unique_names) > 1
+    char_list = ", ".join([f"<{n}>" for n in unique_names])
+    
+    scene_type = "MULTI-CHARACTER" if is_multi else "SINGLE-CHARACTER"
+    
+    return f"""Analyze and generate prompts for the following story sequence:
+
+{scenes_text}
+
+Characters detected: {char_list}
+Scene type: {scene_type}
+Number of panels: {len(scenes)}
+
+IMPORTANT:
+1. First analyze the story structure (Characters, Core Elements, Panel-by-Panel breakdown)
+2. Then generate explicit visual prompts for each panel
+3. NEVER use "the same", "also wearing" - always describe character appearance explicitly in EACH panel
+4. Include: character ID, gender, hair color+style, top color+type, bottom color+type, action, scene, lighting
+5. Output pure JSON matching the schema, no commentary outside JSON.
+"""
+
+# ============================================================
+# Section 4: LLM Loading and Inference
 # ============================================================
 
 def load_llm(llm_path: str):
-    """
-    Load LLM from local path or HuggingFace (via HF-Mirror).
-    Mirrors ControlNet/SDXL loading pattern for consistency.
-    """
-    print(f"[LLM] Loading model (auto-cache via HF-Mirror): {llm_path}")
+    """Load LLM from local path or HuggingFace (via HF-Mirror)."""
+    print(f"[LLM] Loading model: {llm_path}")
     
     tokenizer = AutoTokenizer.from_pretrained(
         llm_path,
@@ -310,18 +403,15 @@ def run_llm_inference(tokenizer, model, system_prompt: str, user_prompt: str,
     generated_ids = output_ids[0][inputs["input_ids"].shape[1]:]
     return tokenizer.decode(generated_ids, skip_special_tokens=True).strip()
 
-
 # ============================================================
-# Section 4: JSON Parsing and Post-processing (Path injection unchanged)
+# Section 5: JSON Parsing
 # ============================================================
 
-def parse_llm_output(raw_output: str) -> dict:
+def parse_json_output(raw_output: str) -> dict:
     """Extract JSON from LLM output"""
-    # Remove possible Markdown code blocks
     cleaned = re.sub(r'^```(?:json)?\s*', '', raw_output, flags=re.MULTILINE)
     cleaned = re.sub(r'```\s*$', '', cleaned, flags=re.MULTILINE).strip()
 
-    # Extract first complete JSON object
     brace_start = cleaned.find('{')
     brace_end = cleaned.rfind('}')
     if brace_start != -1 and brace_end != -1:
@@ -338,6 +428,89 @@ def parse_llm_output(raw_output: str) -> dict:
         print("[DEBUG] Raw output saved to llm_debug.txt")
         return None
 
+# Alias for backward compatibility with pipeline_runner.py
+parse_llm_output = parse_json_output
+
+# ============================================================
+# Section 6: Multi-Turn Processing Pipeline
+# ============================================================
+
+def process_multiturn(tokenizer, model, scenes: list, story_id: str, 
+                      results_root: str, enable_refinement: bool = True) -> dict:
+    """
+    Multi-turn processing pipeline:
+    Phase 1: Story Analysis
+    Phase 2: Visual Prompt Generation
+    Phase 3: Optional Refinement
+    """
+    print("\n" + "="*60)
+    print("PHASE 1: STORY ANALYSIS")
+    print("="*60)
+    
+    # Phase 1: Analyze story structure
+    user_prompt_p1 = build_phase1_user_prompt(scenes)
+    print(f"[INPUT] Analyzing {len(scenes)} scenes...")
+    
+    phase1_output = run_llm_inference(tokenizer, model, SYSTEM_PROMPT_PHASE1, user_prompt_p1)
+    print(f"[PHASE 1 OUTPUT]\n{phase1_output[:500]}..." if len(phase1_output) > 500 else f"[PHASE 1 OUTPUT]\n{phase1_output}")
+    
+    print("\n" + "="*60)
+    print("PHASE 2: VISUAL PROMPT GENERATION")
+    print("="*60)
+    
+    # Phase 2: Generate visual prompts
+    user_prompt_p2 = build_phase2_user_prompt(scenes, phase1_output)
+    
+    phase2_output = run_llm_inference(tokenizer, model, SYSTEM_PROMPT_PHASE2, user_prompt_p2)
+    
+    data = parse_json_output(phase2_output)
+    
+    if data is None:
+        print("[ERROR] Phase 2 output parsing failed")
+        return None
+    
+    # Validate panel count
+    if len(data.get("panels", [])) != len(scenes):
+        print(f"[WARN] Panel count mismatch: expected {len(scenes)}, got {len(data.get('panels', []))}")
+        if enable_refinement:
+            print("[INFO] Proceeding to Phase 3 for refinement...")
+        else:
+            # Try to fix by padding/truncating
+            panels = data.get("panels", [])
+            while len(panels) < len(scenes):
+                panels.append(panels[-1].copy() if panels else {
+                    "index": len(panels) + 1,
+                    "raw_text": scenes[len(panels)]["text"] if len(panels) < len(scenes) else "",
+                    "expanded_prompt": "placeholder",
+                    "negative_prompt": "blurry, distorted, deformed",
+                    "reference_image": None
+                })
+            data["panels"] = panels[:len(scenes)]
+    
+    if enable_refinement:
+        print("\n" + "="*60)
+        print("PHASE 3: PROMPT REFINEMENT")
+        print("="*60)
+        
+        # Phase 3: Refine prompts
+        prompts_only = [p.get("expanded_prompt", "") for p in data.get("panels", [])]
+        user_prompt_p3 = build_refinement_user_prompt(scenes, prompts_only)
+        
+        phase3_output = run_llm_inference(tokenizer, model, SYSTEM_PROMPT_PHASE2, user_prompt_p3)
+        
+        refined_data = parse_json_output(phase3_output)
+        if refined_data is not None:
+            data = refined_data
+            print("[PHASE 3] Refinement complete")
+        else:
+            print("[PHASE 3] Refinement failed, using Phase 2 output")
+    
+    return data
+
+# ============================================================
+# Section 7: Post-processing
+# ============================================================
+
 def derive_story_id(input_path: str) -> str:
     """Extract numeric ID from filename"""
     stem = os.path.splitext(os.path.basename(input_path))[0]
@@ -345,20 +518,16 @@ def derive_story_id(input_path: str) -> str:
     return m.group(0) if m else stem
 
 def post_process(data: dict, story_id: str, results_root: str, raw_scenes: list) -> dict:
-    """
-    Post-processing: Inject IDs, paths, and force alignment with original Raw Text.
-    """
+    """Post-processing: Inject IDs, paths, and force alignment with original Raw Text."""
     data["story_id"] = story_id
     panels = data.get("panels", [])
     raw_text_map = {s["index"]: s["text"] for s in raw_scenes}
 
     for p in panels:
         idx = p["index"]
-        # Force restore original Raw Text (maintain input authenticity)
         if idx in raw_text_map:
             p["raw_text"] = raw_text_map[idx]
         
-        # Inject reference paths (Panel 1 has no reference, Panel N references N-1)
         if idx == 1:
             p["reference_image"] = None
         else:
@@ -367,12 +536,12 @@ def post_process(data: dict, story_id: str, results_root: str, raw_scenes: list)
             
     return data
 
-
 # ============================================================
-# Section 5: Main Process
+# Section 8: Main Process
 # ============================================================
 
-def process(input_path: str, output_path: str, llm_path: str, results_root: str = "results"):
+def process(input_path: str, output_path: str, llm_path: str, 
+            results_root: str = "results", enable_refinement: bool = True):
     with open(input_path, "r", encoding="utf-8") as f:
         raw_text = f.read()
 
@@ -380,7 +549,6 @@ def process(input_path: str, output_path: str, llm_path: str, results_root: str 
     parsed = parse_raw_input(raw_text)
     story_id = derive_story_id(input_path)
     
-    # Use compatible key name for logging
     print(f"[INPUT] StoryID: {story_id}, Subject: {parsed['subject_name']}, Frames: {len(parsed['scenes'])}")
     for s in parsed["scenes"]:
         print(f"  [SCENE-{s['index']}] {s['text']}")
@@ -388,15 +556,19 @@ def process(input_path: str, output_path: str, llm_path: str, results_root: str 
     # Load LLM
     tokenizer, model = load_llm(llm_path)
     
-    # Build prompt
-    user_prompt = build_user_prompt(parsed["default_subject"], parsed["scenes"])
-    print("\n[LLM] Running inference (Character ID anchoring mode)...")
+    # Multi-turn processing
+    print(f"\n[PROCESSING] Running multi-turn pipeline (refinement={'enabled' if enable_refinement else 'disabled'})...")
     
-    raw_output = run_llm_inference(tokenizer, model, SYSTEM_PROMPT, user_prompt)
-    data = parse_llm_output(raw_output)
+    data = process_multiturn(
+        tokenizer, model, 
+        parsed["scenes"], 
+        story_id, 
+        results_root,
+        enable_refinement
+    )
     
     if data is None:
-        print("[ERROR] LLM output parsing failed, aborting")
+        print("[ERROR] Processing failed, aborting")
         return None
 
     # Post-processing injection
@@ -408,17 +580,29 @@ def process(input_path: str, output_path: str, llm_path: str, results_root: str 
         json.dump(data, f, indent=2, ensure_ascii=False)
         
     print(f"\n[OUTPUT] JSON saved: {output_path}")
+    
+    # Print generated prompts for review
+    print("\n" + "="*60)
+    print("GENERATED PROMPTS")
+    print("="*60)
+    for p in data.get("panels", []):
+        print(f"\n[Panel {p['index']}]")
+        print(f"Raw: {p['raw_text']}")
+        print(f"Prompt: {p['expanded_prompt'][:200]}..." if len(p.get('expanded_prompt', '')) > 200 else f"Prompt: {p.get('expanded_prompt', '')}")
+    
     return data
 
 def main():
-    parser = argparse.ArgumentParser(description="Refactored LLM Processor with Character ID Anchoring")
+    parser = argparse.ArgumentParser(description="Multi-Turn LLM Processor for Storyboard Generation")
     parser.add_argument("--input", type=str, required=True, help="Input .txt file path")
     parser.add_argument("--output", type=str, required=True, help="Output JSON path")
     parser.add_argument("--llm_path", type=str, default="Qwen/Qwen2.5-7B-Instruct", help="LLM model repo_id or local path")
     parser.add_argument("--results_root", type=str, default="results", help="Image output root directory")
+    parser.add_argument("--no_refinement", action="store_true", help="Disable Phase 3 refinement")
     args = parser.parse_args()
     
-    process(args.input, args.output, args.llm_path, args.results_root)
+    process(args.input, args.output, args.llm_path, args.results_root, 
+            enable_refinement=not args.no_refinement)
 
 if __name__ == "__main__":
     main()

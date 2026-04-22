@@ -1,5 +1,9 @@
 #!/bin/bash
 
+# Activate conda environment
+source ~/miniconda3/etc/profile.d/conda.sh
+conda activate storygen-zhenzhuo
+
 # Enable extended globbing (for excluding files)
 shopt -s extglob
 
