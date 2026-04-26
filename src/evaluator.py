@@ -15,7 +15,27 @@ import torch.nn.functional as F
 import numpy as np
 from PIL import Image
 from typing import List, Tuple, Dict, Optional
-import clip
+from transformers import CLIPProcessor, CLIPModel
+
+
+def _load_clip_model(model_name: str = "openai/clip-vit-base-patch32", device: str = "cuda"):
+    """Load CLIP model using transformers."""
+    model = CLIPModel.from_pretrained(model_name).to(device)
+    processor = CLIPProcessor.from_pretrained(model_name)
+    model.eval()
+    return model, processor
+
+
+def _clip_encode_image(model, processor, image, device):
+    """Encode image with CLIP."""
+    inputs = processor(images=image, return_tensors="pt").to(device)
+    return model.get_image_features(**inputs)
+
+
+def _clip_encode_text(model, processor, text, device):
+    """Encode text with CLIP."""
+    inputs = processor(text=[text], return_tensors="pt", padding=True).to(device)
+    return model.get_text_features(**inputs)
 
 
 # ============================================================================
@@ -68,13 +88,12 @@ class StoryEvaluator:
         """Load CLIP model."""
         try:
             print("[Evaluator] Loading CLIP...")
-            self.clip_model, self.clip_preprocess = clip.load("ViT-B/32", device=self.device)
-            self.clip_model.eval()
+            self.clip_model, self.clip_processor = _load_clip_model(device=self.device)
             print("[Evaluator] CLIP loaded")
         except Exception as e:
             print(f"[Evaluator] CLIP failed: {e}")
             self.clip_model = None
-            self.clip_preprocess = None
+            self.clip_processor = None
 
     def _load_aesthetic_scorer(self):
         """Load aesthetic scorer (simple MLP on CLIP features)."""
@@ -117,12 +136,13 @@ class StoryEvaluator:
             return 0.5
         
         try:
-            img = self.clip_preprocess(image).unsqueeze(0).to(self.device)
-            text_tokens = clip.tokenize([text]).to(self.device)
-            img_feat = F.normalize(self.clip_model.encode_image(img).float(), dim=-1)
-            text_feat = F.normalize(self.clip_model.encode_text(text_tokens).float(), dim=-1)
+            img_feat = _clip_encode_image(self.clip_model, self.clip_processor, image, self.device)
+            text_feat = _clip_encode_text(self.clip_model, self.clip_processor, text, self.device)
+            img_feat = F.normalize(img_feat.float(), dim=-1)
+            text_feat = F.normalize(text_feat.float(), dim=-1)
             return ((img_feat @ text_feat.T).item() + 1) / 2
-        except:
+        except Exception as e:
+            print(f"[Evaluator] CLIP score error: {e}")
             return 0.5
 
     def _compute_aesthetic(self, image: Image.Image) -> float:
@@ -131,8 +151,7 @@ class StoryEvaluator:
             return 0.5
         
         try:
-            img = self.clip_preprocess(image).unsqueeze(0).to(self.device)
-            features = self.clip_model.encode_image(img).float()
+            features = _clip_encode_image(self.clip_model, self.clip_processor, image, self.device).float()
             score = torch.sigmoid(self.aesthetic_model(features)).item()
             return score
         except:
@@ -211,8 +230,7 @@ class SimpleEvaluator:
     
     def __init__(self, device: str = "cuda"):
         self.device = device
-        self.clip_model, self.clip_preprocess = clip.load("ViT-B/32", device=self.device)
-        self.clip_model.eval()
+        self.clip_model, self.clip_processor = _load_clip_model(device=self.device)
     
     @torch.no_grad()
     def evaluate_candidates(
@@ -225,10 +243,10 @@ class SimpleEvaluator:
         scores = []
         for img in candidates:
             if current_prompt:
-                img_t = self.clip_preprocess(img).unsqueeze(0).to(self.device)
-                text_t = clip.tokenize([current_prompt]).to(self.device)
-                img_feat = F.normalize(self.clip_model.encode_image(img_t).float(), dim=-1)
-                text_feat = F.normalize(self.clip_model.encode_text(text_t).float(), dim=-1)
+                img_feat = _clip_encode_image(self.clip_model, self.clip_processor, img, self.device)
+                text_feat = _clip_encode_text(self.clip_model, self.clip_processor, current_prompt, self.device)
+                img_feat = F.normalize(img_feat.float(), dim=-1)
+                text_feat = F.normalize(text_feat.float(), dim=-1)
                 sim = ((img_feat @ text_feat.T).item() + 1) / 2
             else:
                 sim = 0.5

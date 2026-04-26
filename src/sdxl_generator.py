@@ -17,9 +17,9 @@ from dataclasses import dataclass
 
 from diffusers import (
     AutoencoderKL, UNet2DConditionModel, EulerDiscreteScheduler,
-    CLIPTextModel, CLIPTextModelWithProjection,
 )
-from diffusers.models.attention_processor import Attention, AttentionProcessor
+from transformers import CLIPTextModel, CLIPTextModelWithProjection
+from diffusers.models.attention_processor import Attention, AttnProcessor
 
 
 # ============================================================================
@@ -214,7 +214,7 @@ class SharedAttentionManager:
 # CUSTOM ATTENTION PROCESSORS
 # ============================================================================
 
-class ConsistentSelfAttentionProcessor(AttentionProcessor):
+class ConsistentSelfAttentionProcessor(AttnProcessor):
     def __init__(self, consistent_attn: ConsistentSelfAttention, shared_mgr: Optional[SharedAttentionManager] = None):
         self.consistent_attn = consistent_attn
         self.shared_mgr = shared_mgr
@@ -225,7 +225,7 @@ class ConsistentSelfAttentionProcessor(AttentionProcessor):
         return self.consistent_attn(hidden_states, step_index=step_index, total_steps=total_steps)
 
 
-class MultiSourceCrossAttentionProcessor(AttentionProcessor):
+class MultiSourceCrossAttentionProcessor(AttnProcessor):
     def __init__(self, msa_attn: MultiSourceCrossAttention):
         self.msa_attn = msa_attn
 

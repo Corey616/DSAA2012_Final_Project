@@ -19,9 +19,9 @@ from PIL import Image
 import time
 from dataclasses import dataclass
 
-from llm_processor import LLMProcessor, StoryData, Character, Frame
-from sdxl_generator import WhiteBoxSDXLGenerator, ConsistencyConfig
-from evaluator import StoryEvaluator, SimpleEvaluator
+from .llm_processor import LLMProcessor, StoryData, Character, Frame
+from .sdxl_generator import WhiteBoxSDXLGenerator, ConsistencyConfig
+from .evaluator import StoryEvaluator, SimpleEvaluator
 
 
 # ============================================================================
