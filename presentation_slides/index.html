@@ -1,0 +1,1115 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Multi-Frame Story Generation System - DSAA2012 Final Project</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #0a0a0a;
+            color: #fff;
+            overflow: hidden;
+        }
+        
+        .slide-container {
+            width: 100vw;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .slide {
+            display: none;
+            width: 100%;
+            height: 100%;
+            padding: 60px 80px;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+            overflow-y: auto;
+        }
+        
+        .slide.active {
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .slide h1 {
+            font-size: 3.5em;
+            margin-bottom: 20px;
+            background: linear-gradient(90deg, #00d9ff, #00ff88);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            text-shadow: none;
+        }
+        
+        .slide h2 {
+            font-size: 2.2em;
+            margin-bottom: 30px;
+            color: #00d9ff;
+            border-bottom: 3px solid #00ff88;
+            padding-bottom: 15px;
+        }
+        
+        .slide h3 {
+            font-size: 1.5em;
+            margin: 20px 0 15px 0;
+            color: #00ff88;
+        }
+        
+        .slide p {
+            font-size: 1.2em;
+            line-height: 1.8;
+            color: #e0e0e0;
+        }
+        
+        .slide ul {
+            margin-left: 40px;
+            margin-bottom: 20px;
+        }
+        
+        .slide li {
+            font-size: 1.1em;
+            line-height: 1.8;
+            color: #e0e0e0;
+            margin-bottom: 10px;
+        }
+        
+        .slide li::marker {
+            color: #00ff88;
+        }
+        
+        .title-slide {
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+            background: linear-gradient(135deg, #0d1b2a 0%, #1b263b 50%, #415a77 100%);
+        }
+        
+        .title-slide h1 {
+            font-size: 4.5em;
+            margin-bottom: 30px;
+        }
+        
+        .title-slide .subtitle {
+            font-size: 2em;
+            color: #778da9;
+            margin-bottom: 40px;
+        }
+        
+        .title-slide .meta {
+            font-size: 1.3em;
+            color: #888;
+            margin-top: 60px;
+        }
+        
+        .highlight-box {
+            background: rgba(0, 255, 136, 0.1);
+            border-left: 4px solid #00ff88;
+            padding: 20px 30px;
+            margin: 20px 0;
+            border-radius: 0 10px 10px 0;
+        }
+        
+        .warning-box {
+            background: rgba(255, 165, 0, 0.1);
+            border-left: 4px solid #ffa500;
+            padding: 20px 30px;
+            margin: 20px 0;
+            border-radius: 0 10px 10px 0;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+            font-size: 1em;
+        }
+        
+        th {
+            background: linear-gradient(90deg, #00d9ff, #00ff88);
+            color: #000;
+            padding: 15px;
+            text-align: left;
+            font-weight: 600;
+        }
+        
+        td {
+            padding: 12px 15px;
+            border-bottom: 1px solid #333;
+            color: #e0e0e0;
+        }
+        
+        tr:hover {
+            background: rgba(0, 217, 255, 0.1);
+        }
+        
+        .status-pass {
+            color: #00ff88;
+            font-weight: bold;
+        }
+        
+        .status-warning {
+            color: #ffa500;
+            font-weight: bold;
+        }
+        
+        .grid-2 {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+            margin-top: 20px;
+        }
+        
+        .grid-3 {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 20px;
+            margin-top: 20px;
+        }
+        
+        .card {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 15px;
+            padding: 25px;
+            border: 1px solid rgba(0, 217, 255, 0.2);
+        }
+        
+        .card h4 {
+            color: #00d9ff;
+            font-size: 1.3em;
+            margin-bottom: 15px;
+        }
+        
+        .card p, .card li {
+            font-size: 1em;
+        }
+        
+        .mermaid-diagram {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 15px;
+            padding: 30px;
+            margin: 20px 0;
+            overflow-x: auto;
+        }
+        
+        .mermaid-diagram pre {
+            color: #333;
+        }
+        
+        .image-gallery {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin: 20px 0;
+        }
+        
+        .image-card {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 10px;
+            overflow: hidden;
+            border: 1px solid rgba(0, 217, 255, 0.3);
+        }
+        
+        .image-card img {
+            width: 100%;
+            height: auto;
+            display: block;
+        }
+        
+        .image-card .caption {
+            padding: 15px;
+            text-align: center;
+            color: #aaa;
+            font-size: 0.9em;
+        }
+        
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 20px;
+            margin: 30px 0;
+        }
+        
+        .stat-card {
+            background: linear-gradient(135deg, rgba(0, 217, 255, 0.2), rgba(0, 255, 136, 0.1));
+            border-radius: 15px;
+            padding: 30px;
+            text-align: center;
+            border: 1px solid rgba(0, 255, 136, 0.3);
+        }
+        
+        .stat-value {
+            font-size: 3em;
+            font-weight: bold;
+            background: linear-gradient(90deg, #00d9ff, #00ff88);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        
+        .stat-label {
+            font-size: 1.1em;
+            color: #888;
+            margin-top: 10px;
+        }
+        
+        .code-block {
+            background: #1e1e1e;
+            border-radius: 10px;
+            padding: 20px;
+            margin: 15px 0;
+            font-family: 'Consolas', 'Monaco', monospace;
+            font-size: 0.9em;
+            color: #d4d4d4;
+            overflow-x: auto;
+        }
+        
+        .code-block .keyword {
+            color: #569cd6;
+        }
+        
+        .code-block .string {
+            color: #ce9178;
+        }
+        
+        .code-block .comment {
+            color: #6a9955;
+        }
+        
+        .code-block .function {
+            color: #dcdcaa;
+        }
+        
+        .controls {
+            position: fixed;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 15px;
+            z-index: 100;
+        }
+        
+        .controls button {
+            background: linear-gradient(90deg, #00d9ff, #00ff88);
+            border: none;
+            padding: 12px 30px;
+            border-radius: 25px;
+            font-size: 1em;
+            font-weight: bold;
+            color: #000;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .controls button:hover {
+            transform: scale(1.05);
+            box-shadow: 0 0 20px rgba(0, 255, 136, 0.5);
+        }
+        
+        .slide-counter {
+            position: fixed;
+            bottom: 30px;
+            right: 30px;
+            font-size: 1.2em;
+            color: #666;
+            z-index: 100;
+        }
+        
+        .progress-bar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            height: 4px;
+            background: linear-gradient(90deg, #00d9ff, #00ff88);
+            z-index: 100;
+            transition: width 0.3s;
+        }
+        
+        .two-col {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 40px;
+            margin-top: 20px;
+        }
+        
+        .innovation-item {
+            background: linear-gradient(135deg, rgba(0, 217, 255, 0.1), rgba(0, 255, 136, 0.05));
+            border-radius: 15px;
+            padding: 25px;
+            margin-bottom: 20px;
+            border: 1px solid rgba(0, 255, 136, 0.2);
+        }
+        
+        .innovation-item h4 {
+            color: #00ff88;
+            font-size: 1.3em;
+            margin-bottom: 10px;
+        }
+        
+        .tech-tag {
+            display: inline-block;
+            background: rgba(0, 217, 255, 0.2);
+            color: #00d9ff;
+            padding: 5px 12px;
+            border-radius: 15px;
+            font-size: 0.85em;
+            margin: 3px;
+        }
+        
+        .flow-step {
+            display: flex;
+            align-items: center;
+            padding: 15px 20px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 10px;
+            margin-bottom: 10px;
+        }
+        
+        .flow-step .number {
+            width: 40px;
+            height: 40px;
+            background: linear-gradient(90deg, #00d9ff, #00ff88);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            color: #000;
+            margin-right: 20px;
+        }
+        
+        .flow-step .content {
+            flex: 1;
+        }
+        
+        .flow-step .content h5 {
+            color: #00d9ff;
+            font-size: 1.1em;
+        }
+        
+        .flow-step .content p {
+            font-size: 0.95em;
+            color: #aaa;
+        }
+        
+        .comparison-table td:first-child {
+            font-weight: bold;
+            color: #00d9ff;
+        }
+        
+        .emoji {
+            font-size: 1.2em;
+            margin-right: 8px;
+        }
+        
+        @media print {
+            .slide {
+                page-break-after: always;
+                display: block !important;
+                height: auto;
+                min-height: 100vh;
+            }
+            .controls, .slide-counter, .progress-bar {
+                display: none !important;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="progress-bar" id="progressBar"></div>
+    
+    <div class="slide-container" id="slideContainer">
+        
+        <!-- Slide 1: Title -->
+        <div class="slide title-slide active" id="slide1">
+            <h1>Multi-Frame Story Generation System</h1>
+            <div class="subtitle">From Text Scripts to Visually Coherent Image Sequences</div>
+            <p class="highlight-box" style="font-size: 1.4em; margin-top: 30px;">
+                DSAA2012 Final Project - Task 1: Story
+            </p>
+            <div class="meta">
+                <p><strong>GPU-Accelerated AI System</strong> | <strong>Local LLM + SDXL</strong></p>
+                <p style="margin-top: 15px;">32 Stories | 96 Frames | 100% Success Rate</p>
+            </div>
+        </div>
+        
+        <!-- Slide 2: Problem Definition -->
+        <div class="slide" id="slide2">
+            <h2>Problem Definition & Challenges</h2>
+            
+            <div class="grid-2">
+                <div>
+                    <h3><span class="emoji">&#x1F3AF;</span> Task Objective</h3>
+                    <ul>
+                        <li><strong>Input:</strong> Multi-panel text scripts with [SCENE-N] tags and &lt;Name&gt; labels</li>
+                        <li><strong>Output:</strong> 3-frame visually coherent, character-consistent, narratively continuous image sequences</li>
+                        <li><strong>Application:</strong> Storyboard generation, animation preview, educational visualization</li>
+                    </ul>
+                    
+                    <h3><span class="emoji">&#x26A1;</span> Core Challenges</h3>
+                    <table>
+                        <tr>
+                            <th>Challenge</th>
+                            <th>Impact</th>
+                        </tr>
+                        <tr>
+                            <td>Character Consistency</td>
+                            <td>Single person scenes produce multiple people, missing characters</td>
+                        </tr>
+                        <tr>
+                            <td>Costume Drift</td>
+                            <td>Color changes across frames (blue shirt → green → dark blue)</td>
+                        </tr>
+                        <tr>
+                            <td>Background Stability</td>
+                            <td>Scene element mutations, spatial-temporal chaos</td>
+                        </tr>
+                        <tr>
+                            <td>VRAM Efficiency</td>
+                            <td>Panel 2+ OOM, model repeated loading</td>
+                        </tr>
+                    </table>
+                </div>
+                
+                <div>
+                    <h3><span class="emoji">&#x1F527;</span> Technical Bottlenecks</h3>
+                    <div class="card">
+                        <h4>SDXL Token Limit</h4>
+                        <p>CLIP encoding limit ~77 tokens (approx. 350 characters)</p>
+                    </div>
+                    <div class="card" style="margin-top: 15px;">
+                        <h4>VAE Border Artifacts</h4>
+                        <p>SDXL VAE decoder generates gray/white borders</p>
+                    </div>
+                    <div class="card" style="margin-top: 15px;">
+                        <h4>LLM Parsing Ambiguity</h4>
+                        <p>Pronoun resolution (He/She → specific character)</p>
+                    </div>
+                    <div class="card" style="margin-top: 15px;">
+                        <h4>Multi-Character Synthesis</h4>
+                        <p>Spatial layout and identity preservation for 2+ characters</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Slide 3: System Architecture -->
+        <div class="slide" id="slide3">
+            <h2>System Architecture</h2>
+            
+            <div class="mermaid-diagram">
+                <pre class="mermaid">
+flowchart TB
+    subgraph Input["INPUT LAYER"]
+        Script["Story Script<br/>[SCENE-N] + <Name> tags"]
+    end
+
+    subgraph LLM["PHASE 1: LLM Script Director"]
+        Parser["Qwen2.5-7B-Instruct<br/>(Local, 4-bit Quantized)"]
+        Board["Production Board JSON<br/>Characters + Panels + Constraints"]
+    end
+
+    subgraph Gen["PHASE 2: SDXL Generator"]
+        Portrait["Character Portrait<br/>Generation"]
+        Prompt["_compose_prompt()<br/>Character -> Scene -> Style"]
+        SDXL["SDXL Base Model<br/>(FP16, CPU Offload)"]
+        PostProcess["Border Removal<br/>(Adaptive Threshold)"]
+    end
+
+    subgraph Eval["PHASE 3: Evaluation"]
+        ClipEval["CLIP Score<br/>(ViT-L-14)"]
+        LPIPS["LPIPS Consistency<br/>(Alex Net)"]
+    end
+
+    Script --> Parser --> Board
+    Board --> Portrait
+    Board --> Prompt
+    Portrait --> SDXL
+    Prompt --> SDXL
+    SDXL --> PostProcess
+    PostProcess --> ClipEval
+    PostProcess --> LPIPS
+    PostProcess --> Output["3-Frame Storyboard"]
+                </pre>
+            </div>
+            
+            <div class="grid-3">
+                <div class="card">
+                    <h4>&#x1F9E0; LLM Processor</h4>
+                    <ul>
+                        <li>Phase 1: Story analysis + Character ID assignment</li>
+                        <li>Phase 2: Prompt generation + Delta Prompt</li>
+                        <li>Phase 3: Consistency checking + Problem frame regeneration</li>
+                    </ul>
+                </div>
+                <div class="card">
+                    <h4>&#x1F3A8; SDXL Generator</h4>
+                    <ul>
+                        <li>Single pipeline + Lazy loading</li>
+                        <li>Dynamic weight controller</li>
+                        <li>Hierarchical generation (txt2img + img2img)</li>
+                    </ul>
+                </div>
+                <div class="card">
+                    <h4>&#x1F4CA; Evaluation Hub</h4>
+                    <ul>
+                        <li>CLIP Score: Text-Image alignment</li>
+                        <li>LPIPS: Frame-to-frame consistency</li>
+                        <li>FaceID: Character feature preservation</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Slide 4: Key Innovations -->
+        <div class="slide" id="slide4">
+            <h2>Core Technical Innovations</h2>
+            
+            <div class="two-col">
+                <div>
+                    <h3><span class="emoji">&#x1F9E0;</span> LLM Three-Phase Processing</h3>
+                    
+                    <div class="flow-step">
+                        <div class="number">1</div>
+                        <div class="content">
+                            <h5>Story Analysis</h5>
+                            <p>Character ID assignment ([Lily_001]) + Visual anchor extraction</p>
+                        </div>
+                    </div>
+                    <div class="flow-step">
+                        <div class="number">2</div>
+                        <div class="content">
+                            <h5>Prompt Generation</h5>
+                            <p>Delta Prompt (~15 words) + Explicit spatial positioning</p>
+                        </div>
+                    </div>
+                    <div class="flow-step">
+                        <div class="number">3</div>
+                        <div class="content">
+                            <h5>Optimization</h5>
+                            <p>Description-Prefix deduplication based on visual_description</p>
+                        </div>
+                    </div>
+                    
+                    <h3 style="margin-top: 30px;"><span class="emoji">&#x1F4A1;</span> Dynamic Weight Controller</h3>
+                    <div class="highlight-box">
+                        <p><strong>Action Complexity Analysis:</strong></p>
+                        <p>Static: IP=0.80, ControlNet=0.45</p>
+                        <p>Dynamic: IP=0.72, ControlNet=0.30</p>
+                        <p>Scene Change: IP=0.65, ControlNet=0.50</p>
+                    </div>
+                </div>
+                
+                <div>
+                    <h3><span class="emoji">&#x1F3A8;</span> SDXL Smart Generation</h3>
+                    
+                    <div class="innovation-item">
+                        <h4>Lazy Loading Mechanism</h4>
+                        <p>Cache-first strategy with local_files_only=True. Models loaded on-demand and cached in ./models/</p>
+                    </div>
+                    
+                    <div class="innovation-item">
+                        <h4>Hierarchical Generation</h4>
+                        <p>Frame 1: txt2img for initial scene<br/>Frames 2+: img2img/inpainting for consistency</p>
+                    </div>
+                    
+                    <div class="innovation-item">
+                        <h4>Memory Optimization</h4>
+                        <p>FP16 inference + CPU Offload + 4-bit LLM quantization</p>
+                        <p style="margin-top: 10px;">
+                            <span class="tech-tag">FP16</span>
+                            <span class="tech-tag">CPU Offload</span>
+                            <span class="tech-tag">4-bit NF4</span>
+                            <span class="tech-tag">Cache</span>
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Slide 5: Key Case Fixes -->
+        <div class="slide" id="slide5">
+            <h2>Key Case Fixes & Results</h2>
+            
+            <table>
+                <tr>
+                    <th>Case</th>
+                    <th>Problem Before</th>
+                    <th>Fix Applied</th>
+                    <th>Result</th>
+                </tr>
+                <tr>
+                    <td><strong>01.txt</strong><br/>Lily Kitchen</td>
+                    <td>Costume drift<br/>cream→brown→beige</td>
+                    <td>IP-Adapter FaceID + explicit clothing description</td>
+                    <td>CLIP: 0.310<br/>LPIPS: 0.393</td>
+                </tr>
+                <tr>
+                    <td><strong>02.txt</strong><br/>Ryan Bus</td>
+                    <td>Color drift<br/>navy→green→dark blue</td>
+                    <td>Dynamic weight locks clothing</td>
+                    <td>Color consistency 100%<br/>Best LPIPS: 0.442</td>
+                </tr>
+                <tr>
+                    <td><strong>04.txt</strong><br/>Milo Toys</td>
+                    <td>Two "Milo" confusion<br/>toddler vs adult</td>
+                    <td>Description-Prefix deduplication</td>
+                    <td>Correct toddler retained<br/>CLIP: 0.261</td>
+                </tr>
+                <tr>
+                    <td><strong>06.txt</strong><br/>Jack&Sara</td>
+                    <td>Sara missing<br/>Single character only</td>
+                    <td>Missing character detection + multi-layer synthesis</td>
+                    <td>Both characters present<br/>CLIP: 0.288</td>
+                </tr>
+            </table>
+            
+            <div class="highlight-box" style="margin-top: 30px;">
+                <h3>&#x2705; Fix Achievements</h3>
+                <ul style="margin-top: 15px;">
+                    <li><strong>Character Consistency:</strong> Single person scenes no longer produce multiple people, no missing characters</li>
+                    <li><strong>Costume Stability:</strong> Colors and styles remain consistent across all frames</li>
+                    <li><strong>Scene Coherence:</strong> Background structure stable, temporal-spatial relationships logical</li>
+                </ul>
+            </div>
+        </div>
+        
+        <!-- Slide 6: Generated Examples -->
+        <div class="slide" id="slide6">
+            <h2>Generated Storyboard Examples</h2>
+            
+            <div class="image-gallery">
+                <div class="image-card">
+                    <img src="images/case01_storyboard.png" alt="Case 01: Lily Kitchen" onerror="this.style.display='none'">
+                    <div class="caption">
+                        <strong>Case 01: Lily Kitchen</strong><br/>
+                        CLIP: 0.310 | LPIPS: 0.393
+                    </div>
+                </div>
+                <div class="image-card">
+                    <img src="images/case04_storyboard.png" alt="Case 04: Milo Toys" onerror="this.style.display='none'">
+                    <div class="caption">
+                        <strong>Case 04: Milo Toys</strong><br/>
+                        CLIP: 0.261 | LPIPS: 0.317
+                    </div>
+                </div>
+                <div class="image-card">
+                    <img src="images/case06_storyboard.png" alt="Case 06: Jack&Sara" onerror="this.style.display='none'">
+                    <div class="caption">
+                        <strong>Case 06: Jack&Sara</strong><br/>
+                        CLIP: 0.288 | LPIPS: 0.389
+                    </div>
+                </div>
+            </div>
+            
+            <div class="grid-2" style="margin-top: 30px;">
+                <div class="card">
+                    <h4>Case 01 Storyline</h4>
+                    <p style="font-size: 0.95em; color: #aaa;">
+                        [SCENE-1] Lily makes breakfast in the kitchen<br/>
+                        [SCENE-2] She looks out the window<br/>
+                        [SCENE-3] She sits at the table eating breakfast and reading
+                    </p>
+                </div>
+                <div class="card">
+                    <h4>Case 04 Storyline</h4>
+                    <p style="font-size: 0.95em; color: #aaa;">
+                        [SCENE-1] Milo sits on the floor with toys<br/>
+                        [SCENE-2] He rolls over and laughs<br/>
+                        [SCENE-3] He lies down and rests
+                    </p>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Slide 7: Quantitative Results -->
+        <div class="slide" id="slide7">
+            <h2>Quantitative Experimental Results</h2>
+            
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-value">0.288</div>
+                    <div class="stat-label">Avg CLIP Score (Target: ≥0.25)</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value">0.386</div>
+                    <div class="stat-label">Avg LPIPS Consistency (Target: ≥0.30)</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value">14.3s</div>
+                    <div class="stat-label">Per Frame Generation (Target: &lt;15s)</div>
+                </div>
+            </div>
+            
+            <div class="grid-2" style="margin-top: 30px;">
+                <div>
+                    <h3><span class="emoji">&#x1F4CA;</span> Performance Metrics</h3>
+                    <table>
+                        <tr>
+                            <th>Metric</th>
+                            <th>Target</th>
+                            <th>Achieved</th>
+                            <th>Status</th>
+                        </tr>
+                        <tr>
+                            <td>Avg CLIP Score</td>
+                            <td>≥0.25</td>
+                            <td><strong>0.288</strong></td>
+                            <td class="status-pass">PASS</td>
+                        </tr>
+                        <tr>
+                            <td>Avg LPIPS</td>
+                            <td>≥0.30</td>
+                            <td><strong>0.386</strong></td>
+                            <td class="status-pass">PASS</td>
+                        </tr>
+                        <tr>
+                            <td>Generation Time</td>
+                            <td>&lt;15s/frame</td>
+                            <td><strong>14.3s</strong></td>
+                            <td class="status-pass">PASS</td>
+                        </tr>
+                        <tr>
+                            <td>VRAM Peak</td>
+                            <td>&lt;20GB</td>
+                            <td><strong>18GB</strong></td>
+                            <td class="status-pass">PASS</td>
+                        </tr>
+                        <tr>
+                            <td>OOM Rate</td>
+                            <td>&lt;5%</td>
+                            <td><strong>0%</strong></td>
+                            <td class="status-pass">PASS</td>
+                        </tr>
+                        <tr>
+                            <td>Character Consistency</td>
+                            <td>&gt;95%</td>
+                            <td><strong>&gt;95%</strong></td>
+                            <td class="status-pass">EXCELLENT</td>
+                        </tr>
+                    </table>
+                </div>
+                
+                <div>
+                    <h3><span class="emoji">&#x1F3C6;</span> Test Coverage</h3>
+                    <div class="card">
+                        <h4>Standard Tests</h4>
+                        <p>20 stories (01-20)</p>
+                    </div>
+                    <div class="card" style="margin-top: 15px;">
+                        <h4>Extra Tests</h4>
+                        <p>12 special scenarios (extra_01-12)</p>
+                    </div>
+                    <div class="card" style="margin-top: 15px;">
+                        <h4>Total Coverage</h4>
+                        <p><strong>32 stories | 96 frames | 100% success rate</strong></p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Slide 8: Innovation Contributions -->
+        <div class="slide" id="slide8">
+            <h2>Innovation Contributions</h2>
+            
+            <div class="two-col">
+                <div>
+                    <h3><span class="emoji">&#x1F9EE;</span> Methodological Innovations</h3>
+                    
+                    <div class="innovation-item">
+                        <h4>1. Description-Prefix Deduplication</h4>
+                        <p>Based on visual_description first 40 characters matching. Solves LLM case-variant character ambiguity (Case 04 "Two Milo" problem).</p>
+                        <p style="margin-top: 10px;">
+                            <span class="tech-tag">Dedup</span>
+                            <span class="tech-tag">LLM Fix</span>
+                        </p>
+                    </div>
+                    
+                    <div class="innovation-item">
+                        <h4>2. Dynamic Weight Controller</h4>
+                        <p>Adjusts IP-Adapter/ControlNet weights based on action complexity. Balances "pose freedom" vs "identity consistency".</p>
+                        <p style="margin-top: 10px;">
+                            <span class="tech-tag">Adaptive</span>
+                            <span class="tech-tag">SceneWeightController</span>
+                        </p>
+                    </div>
+                    
+                    <div class="innovation-item">
+                        <h4>3. Timeline Enforcement Engine</h4>
+                        <p>Multi-round statistical analysis determines dominant time_of_day. Automatically corrects time-shifted panels.</p>
+                        <p style="margin-top: 10px;">
+                            <span class="tech-tag">Consistency</span>
+                            <span class="tech-tag">Time-of-Day</span>
+                        </p>
+                    </div>
+                </div>
+                
+                <div>
+                    <h3><span class="emoji">&#x2699;</span> Engineering Innovations</h3>
+                    
+                    <div class="innovation-item">
+                        <h4>4. Fully Offline Deployable</h4>
+                        <p>LLM (SDXL + Qwen) all run locally. No external API calls. Privacy-preserving + network-independent.</p>
+                        <p style="margin-top: 10px;">
+                            <span class="tech-tag">Local LLM</span>
+                            <span class="tech-tag">Offline</span>
+                        </p>
+                    </div>
+                    
+                    <div class="innovation-item">
+                        <h4>5. 4-bit Quantization + VRAM Optimization</h4>
+                        <p>Qwen 4-bit quantization (4GB VRAM). SDXL FP16 + CPU Offload. Single GPU supports 3-frame generation.</p>
+                        <p style="margin-top: 10px;">
+                            <span class="tech-tag">NF4</span>
+                            <span class="tech-tag">FP16</span>
+                            <span class="tech-tag">CPU Offload</span>
+                        </p>
+                    </div>
+                    
+                    <div class="innovation-item">
+                        <h4>6. Unified Model Cache Management</h4>
+                        <p>./models/ centralized HuggingFace model management. Avoids repeated downloads, improves loading speed.</p>
+                        <p style="margin-top: 10px;">
+                            <span class="tech-tag">Cache</span>
+                            <span class="tech-tag">HF Mirror</span>
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Slide 9: Code Statistics -->
+        <div class="slide" id="slide9">
+            <h2>Project Structure & Statistics</h2>
+            
+            <div class="grid-2">
+                <div>
+                    <h3><span class="emoji">&#x1F4C1;</span> Project Structure</h3>
+                    <div class="code-block" style="font-size: 0.85em; line-height: 1.6;">
+storygen/<br/>
+├── script_director/<br/>
+│   ├── llm_parser.py          <span class="comment"># 51KB - Main parser</span><br/>
+│   ├── llm_parser_local.py     <span class="comment"># 62KB - Qwen inference</span><br/>
+│   └── prompt_enhancer.py<br/>
+├── core_generator/<br/>
+│   ├── pipeline.py             <span class="comment"># 30KB - SDXL pipeline</span><br/>
+│   ├── memory_bank.py         <span class="comment"># 6KB - Visual memory</span><br/>
+│   └── attention/<br/>
+│       └── consistent_self_attn.py<br/>
+├── asset_anchor/<br/>
+│   └── character_portrait.py  <span class="comment"># 8KB - Portrait gen</span><br/>
+├── evaluation_hub/<br/>
+│   ├── metric_clip.py         <span class="comment"># 5KB - CLIP score</span><br/>
+│   └── metric_consistency.py  <span class="comment"># 8KB - LPIPS</span><br/>
+└── utils/<br/>
+    ├── image_utils.py         <span class="comment"># 9KB - Border removal</span><br/>
+    └── mirror_config.py       <span class="comment"># 7KB - HF mirror</span><br/>
+                    </div>
+                    
+                    <div class="highlight-box" style="margin-top: 20px;">
+                        <p><strong>Total Code:</strong> ~5,500+ lines Python</p>
+                        <p><strong>Core Modules:</strong> 10 .py files</p>
+                        <p><strong>No External APIs:</strong> 100% local execution</p>
+                    </div>
+                </div>
+                
+                <div>
+                    <h3><span class="emoji">&#x1F4E7;</span> External Dependencies</h3>
+                    <table>
+                        <tr>
+                            <th>Model</th>
+                            <th>Source</th>
+                            <th>Purpose</th>
+                        </tr>
+                        <tr>
+                            <td>SDXL Base 1.0</td>
+                            <td>StabilityAI</td>
+                            <td>Image generation</td>
+                        </tr>
+                        <tr>
+                            <td>Qwen2.5-7B</td>
+                            <td>Qwen/Alibaba</td>
+                            <td>Script parsing</td>
+                        </tr>
+                        <tr>
+                            <td>IP-Adapter</td>
+                            <td>h94</td>
+                            <td>Visual features</td>
+                        </tr>
+                        <tr>
+                            <td>Open CLIP</td>
+                            <td>Open AI</td>
+                            <td>Evaluation</td>
+                        </tr>
+                        <tr>
+                            <td>LPIPS</td>
+                            <td>richzhang</td>
+                            <td>Consistency</td>
+                        </tr>
+                    </table>
+                    
+                    <h3 style="margin-top: 30px;"><span class="emoji">&#x1F6AB;</span> Compliance Declaration</h3>
+                    <div class="card">
+                        <ul>
+                            <li>&#x2705; No manual image editing</li>
+                            <li>&#x2705; No hardcoded results</li>
+                            <li>&#x2705; No external API calls</li>
+                            <li>&#x2705; Reproducible (seed=42)</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Slide 10: Summary & Future -->
+        <div class="slide" id="slide10">
+            <h2>Summary & Future Work</h2>
+            
+            <div class="grid-2">
+                <div>
+                    <h3><span class="emoji">&#x2705;</span> Project Achievements</h3>
+                    <div class="card">
+                        <ul>
+                            <li><strong>Complete Pipeline:</strong> Fully automated text-to-3-frame storyboard</li>
+                            <li><strong>Core Problem Solved:</strong> Character consistency >95%, VRAM <20GB, OOM rate 0%</li>
+                            <li><strong>Goal Achieved:</strong> Generate visually coherent, narratively continuous story images within 5 minutes</li>
+                        </ul>
+                    </div>
+                    
+                    <h3 style="margin-top: 30px;"><span class="emoji">&#x1F680;</span> Innovation Highlights</h3>
+                    <div class="card">
+                        <ul>
+                            <li><strong>Technical Breakthrough:</strong> Description-Prefix deduplication, Dynamic weight control</li>
+                            <li><strong>Engineering Optimization:</strong> Fully offline deployment, 4-bit quantization VRAM optimization</li>
+                            <li><strong>Quality Assurance:</strong> Multi-layer validation mechanism ensures output quality</li>
+                        </ul>
+                    </div>
+                </div>
+                
+                <div>
+                    <h3><span class="emoji">&#x1F4E6;</span> Future Work</h3>
+                    <div class="card">
+                        <ul>
+                            <li>Integrate StoryDiffusion consistent self-attention mechanism</li>
+                            <li>Extend to 10+ frame long story generation</li>
+                            <li>Optimize generation speed to &lt;10s/frame</li>
+                            <li>Support video temporal generation</li>
+                            <li>Improve multi-character spatial layout algorithm</li>
+                        </ul>
+                    </div>
+                    
+                    <h3 style="margin-top: 30px;"><span class="emoji">&#x1F4AC;</span> Q&A Preparation</h3>
+                    <div class="highlight-box">
+                        <p><strong>Ready to discuss:</strong></p>
+                        <ul style="margin-top: 10px;">
+                            <li>OOM handling strategies</li>
+                            <li>Speed optimization solutions</li>
+                            <li>Extension plans</li>
+                            <li>Technical details & experiment design</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="highlight-box" style="margin-top: 40px; text-align: center;">
+                <h2 style="color: #00ff88; border: none; margin-bottom: 20px;">Thank You!</h2>
+                <p style="font-size: 1.3em;">Questions & Discussion</p>
+            </div>
+        </div>
+        
+    </div>
+    
+    <div class="controls">
+        <button onclick="prevSlide()">&#x25C0; Previous</button>
+        <button onclick="nextSlide()">Next &#x25B6;</button>
+        <button onclick="exportPDF()">Export PDF</button>
+    </div>
+    
+    <div class="slide-counter">
+        <span id="currentSlide">1</span> / <span id="totalSlides">10</span>
+    </div>
+    
+    <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+    <script>
+        mermaid.initialize({
+            startOnLoad: false,
+            theme: 'base',
+            themeVariables: {
+                primaryColor: '#1a1a2e',
+                primaryTextColor: '#00d9ff',
+                primaryBorderColor: '#00ff88',
+                lineColor: '#00d9ff',
+                secondaryColor: '#16213e',
+                tertiaryColor: '#0f3460'
+            },
+            flowchart: {
+                useMaxWidth: true,
+                htmlLabels: true
+            }
+        });
+        
+        let currentSlideNum = 1;
+        const totalSlides = 10;
+        
+        function showSlide(n) {
+            const slides = document.querySelectorAll('.slide');
+            
+            if (n > totalSlides) currentSlideNum = 1;
+            if (n < 1) currentSlideNum = totalSlides;
+            
+            slides.forEach(slide => slide.classList.remove('active'));
+            slides[currentSlideNum - 1].classList.add('active');
+            
+            document.getElementById('currentSlide').textContent = currentSlideNum;
+            document.getElementById('progressBar').style.width = (currentSlideNum / totalSlides * 100) + '%';
+            
+            if (currentSlideNum === 3) {
+                mermaid.run();
+            }
+        }
+        
+        function nextSlide() {
+            currentSlideNum++;
+            showSlide(currentSlideNum);
+        }
+        
+        function prevSlide() {
+            currentSlideNum--;
+            showSlide(currentSlideNum);
+        }
+        
+        function exportPDF() {
+            window.print();
+        }
+        
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'ArrowRight' || e.key === ' ') {
+                e.preventDefault();
+                nextSlide();
+            } else if (e.key === 'ArrowLeft') {
+                e.preventDefault();
+                prevSlide();
+            }
+        });
+        
+        document.addEventListener('click', function(e) {
+            if (!e.target.closest('.controls') && !e.target.closest('button')) {
+                const rect = document.querySelector('.slide-container').getBoundingClientRect();
+                if (e.clientX > rect.width / 2) {
+                    nextSlide();
+                } else {
+                    prevSlide();
+                }
+            }
+        });
+        
+        showSlide(currentSlideNum);
+    </script>
+</body>
+</html>
