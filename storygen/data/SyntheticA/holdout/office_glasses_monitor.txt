@@ -1,0 +1,9 @@
+[SCENE-1] <Worker> sits at a desk wearing glasses.
+
+[SEP]
+
+[SCENE-2] He types while looking at the monitor.
+
+[SEP]
+
+[SCENE-3] He leans back in the chair and checks the screen.

@@ -1,0 +1,9 @@
+[SCENE-1] <Milo> sits on the floor with a toy train.
+
+[SEP]
+
+[SCENE-2] He pushes the train beside a toy box.
+
+[SEP]
+
+[SCENE-3] He smiles and holds the train.

@@ -1,0 +1,9 @@
+[SCENE-1] <Woman> stands in the rain wearing a red coat.
+
+[SEP]
+
+[SCENE-2] She opens an umbrella.
+
+[SEP]
+
+[SCENE-3] She walks past a wet shop window.

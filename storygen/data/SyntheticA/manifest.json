@@ -1,0 +1,79 @@
+{
+  "version": "synthetic_stress_v1",
+  "format": {
+    "scene_count": 3,
+    "separator": "[SEP]",
+    "file_extension": ".txt"
+  },
+  "policy": {
+    "primary_use": "evaluation_and_stress_test",
+    "secondary_use": "small_scale_adapter_or_lora_research_only_if_prompt_schema_plateaus",
+    "benchmark_isolation": "Do not mix SyntheticA into the trusted TaskA benchmark.",
+    "split_rule": "No family leakage between dev and holdout."
+  },
+  "splits": {
+    "dev": [
+      "bird_branch_watch.txt",
+      "robot_conveyor_scan.txt",
+      "cat_dog_bridge.txt",
+      "child_toy_train.txt",
+      "red_coat_rain.txt",
+      "book_window_reader.txt",
+      "chef_gloves_pan.txt",
+      "bus_window_bag.txt"
+    ],
+    "holdout": [
+      "bird_nest_seed.txt",
+      "robot_workbench_light.txt",
+      "toddler_car_seat_snack.txt",
+      "office_glasses_monitor.txt"
+    ]
+  },
+  "families": {
+    "bird_continuity": {
+      "goal": "Check bird identity, branch/perch salience, and concrete motion verbs.",
+      "dev_files": ["bird_branch_watch.txt"],
+      "holdout_files": ["bird_nest_seed.txt"]
+    },
+    "robot_task_continuity": {
+      "goal": "Check mechanical identity persistence and task-specific action grounding.",
+      "dev_files": ["robot_conveyor_scan.txt"],
+      "holdout_files": ["robot_workbench_light.txt"]
+    },
+    "multi_animal_layout": {
+      "goal": "Check multi-animal count, left/right layout, and relation stability.",
+      "dev_files": ["cat_dog_bridge.txt"],
+      "holdout_files": []
+    },
+    "child_toy_body_scale": {
+      "goal": "Check child age bucket, toy salience, and child-scale interactions.",
+      "dev_files": ["child_toy_train.txt"],
+      "holdout_files": ["toddler_car_seat_snack.txt"]
+    },
+    "wardrobe_color_stability": {
+      "goal": "Check outfit color persistence under scene changes.",
+      "dev_files": ["red_coat_rain.txt"],
+      "holdout_files": []
+    },
+    "book_window_prop_alignment": {
+      "goal": "Check panel-specific prop alignment for book and window relations.",
+      "dev_files": ["book_window_reader.txt"],
+      "holdout_files": []
+    },
+    "glove_tool_prop_alignment": {
+      "goal": "Check gloves and tool visibility in kitchen/task panels.",
+      "dev_files": ["chef_gloves_pan.txt"],
+      "holdout_files": []
+    },
+    "vehicle_window_bag_alignment": {
+      "goal": "Check bus/car window phrasing and bag visibility without scene overwrite.",
+      "dev_files": ["bus_window_bag.txt"],
+      "holdout_files": []
+    },
+    "office_face_monitor_alignment": {
+      "goal": "Check glasses/monitor/chair consistency in office panels.",
+      "dev_files": [],
+      "holdout_files": ["office_glasses_monitor.txt"]
+    }
+  }
+}

@@ -1,0 +1,9 @@
+[SCENE-1] <Bird> lands on a branch.
+
+[SEP]
+
+[SCENE-2] It pecks at a leaf.
+
+[SEP]
+
+[SCENE-3] It flies to another branch.

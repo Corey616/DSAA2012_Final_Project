@@ -1,0 +1,9 @@
+[SCENE-1] <Toddler> sits in a car seat holding a snack cup.
+
+[SEP]
+
+[SCENE-2] She looks out the car window.
+
+[SEP]
+
+[SCENE-3] She smiles and lifts the snack cup.

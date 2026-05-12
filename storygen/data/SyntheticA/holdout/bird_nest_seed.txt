@@ -1,0 +1,9 @@
+[SCENE-1] <Bird> stands beside a nest.
+
+[SEP]
+
+[SCENE-2] It picks up a seed.
+
+[SEP]
+
+[SCENE-3] It drops the seed into the nest.

@@ -1,0 +1,9 @@
+[SCENE-1] <Traveler> sits by the bus window with a bag on the seat.
+
+[SEP]
+
+[SCENE-2] He looks outside and holds the bag strap.
+
+[SEP]
+
+[SCENE-3] He stands at the bus door with the bag.

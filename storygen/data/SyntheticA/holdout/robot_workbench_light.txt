@@ -1,0 +1,9 @@
+[SCENE-1] <Robot> works at a bench under a bright light.
+
+[SEP]
+
+[SCENE-2] It tightens a bolt with a tool.
+
+[SEP]
+
+[SCENE-3] It inspects the finished part.

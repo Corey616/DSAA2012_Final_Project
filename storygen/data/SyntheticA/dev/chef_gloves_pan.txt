@@ -1,0 +1,9 @@
+[SCENE-1] <Chef> puts on blue gloves in the kitchen.
+
+[SEP]
+
+[SCENE-2] He lifts a pan from the stove.
+
+[SEP]
+
+[SCENE-3] He serves the food onto a plate.

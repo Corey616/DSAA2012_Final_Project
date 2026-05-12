@@ -1,0 +1,43 @@
+# Model cache (pretrained weights)
+models
+storygen/models/
+.opencode/node_modules/
+local_cache/
+
+# Python cache
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg-info/
+.eggs/
+dist/
+build/
+
+# Virtual environments
+venv/
+env/
+.venv/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Outputs
+outputs
+storygen/outputs/
+archive/
+.env
+session-*.md
+.storygen_memory.db
+references/
+
+*.onnx
+data

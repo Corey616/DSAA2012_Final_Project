@@ -1,0 +1,9 @@
+[SCENE-1] <Girl> reads a book by the window.
+
+[SEP]
+
+[SCENE-2] She looks outside while holding the book.
+
+[SEP]
+
+[SCENE-3] She puts the book on the chair beside the window.

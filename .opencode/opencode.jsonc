@@ -1,0 +1,98 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  // ============================================
+  // 插件注册
+  // ============================================
+  "plugin": [
+    "@nasr-shaer/agent-forge",
+    "opencode-ralph-loop"
+  ],
+  // ============================================
+  // AI Provider 配置
+  // ============================================
+  "provider": {
+    "deepseek": {
+      "options": {
+        "baseURL": "https://api.deepseek.com",
+        "apiKey": "{env:DEEPSEEK_API_KEY}"
+      }
+    }
+  },
+  // ============================================
+  // Agent 定义保存在 .opencode/agents/*.md（agent-forge 格式）
+  // OpenCode 原生支持从该目录注册 agent，无需在 opencode.json 中重复定义
+  // 每个 agent 的权限在各自 .md 文件的 permission: 字段中配置
+  // ============================================
+  // ============================================
+  // MCP 服务
+  // ============================================
+  "mcp": {
+    "storygen-memory": {
+      "type": "local",
+      "enabled": true,
+      "command": [
+        "python3",
+        "memory_mcp_server.py"
+      ]
+    },
+    "personal-knowledge": {
+      "type": "local",
+      "enabled": true,
+      "command": [
+        "bunx",
+        "opencode-personal-knowledge"
+      ]
+    },
+    "moondream": {
+      "type": "local",
+      "enabled": true,
+      "command": [
+        "npx",
+        "-y",
+        "@iflow-mcp/nighttrek-moondream-mcp"
+      ],
+      "timeout": 300000
+    },
+    "context7": {
+      "type": "local",
+      "enabled": true,
+      "command": [
+       "npx", "-y", "@upstash/context7-mcp", "--api-key", "ctx7sk-56aa6d57-5231-405b-9071-b2d8625e73fb"
+      ],
+      // "environment":{
+      //   "CONTEXT7_API_KEY": "ctx7sk-56aa6d57-5231-405b-9071-b2d8625e73fb"
+      // },
+      "timeout": 120000
+    },
+    "pdf-reader": {
+      "type": "local",
+      "enabled": true,
+      "command": [
+        "npx",
+        "-y",
+        "@johangorter/mcp-pdf-server",
+        "/home/KeyuHu/code/DSAA2012FinalNew",
+        "/home/KeyuHu/code/DSAA2012FinalNew/references"
+      ],
+      "timeout": 300000
+    }
+  },
+  // ============================================
+  // 全局默认权限（宽松）
+  // 每个 agent 的 .md 文件可以通过 permission: 字段覆盖
+  // 默认允许所有，由各 agent 自行收紧范围
+  // ============================================
+  "permission": {
+    "mcp": {
+      "*": "allow"
+    },
+    "bash": "allow",
+    "skill": {
+      "*": "allow"
+    },
+    "external_directory": {
+    "/tmp": "allow",
+    "*": "ask"
+  }
+  }
+}

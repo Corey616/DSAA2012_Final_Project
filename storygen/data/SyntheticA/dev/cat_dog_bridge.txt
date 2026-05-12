@@ -1,0 +1,9 @@
+[SCENE-1] <Cat> stands on the left side of a bridge while <Dog> waits on the right.
+
+[SEP]
+
+[SCENE-2] They look at each other.
+
+[SEP]
+
+[SCENE-3] They walk across the bridge together.

@@ -1,0 +1,9 @@
+[SCENE-1] <Robot> sorts boxes on a conveyor belt.
+
+[SEP]
+
+[SCENE-2] It pauses and scans a label.
+
+[SEP]
+
+[SCENE-3] It places a box on the stack.
