@@ -25,34 +25,19 @@ class PromptEnhancer:
         "professional photography"
     ]
 
-    # Global style modifiers - ALL converted to photorealistic
-    # CRITICAL: Remove terms that might cause animation/illustration styles
     STYLE_MODIFIERS = {
-        "warm_cinematic_lifestyle": (
-            "photorealistic photography, cinematic lighting, warm color grading, "
-            "shallow depth of field, golden hour tones, natural shadows"
+        "anime_ghibli": (
+            "anime style, studio ghibli, clean lineart, cel shading, "
+            "soft colors, hand-drawn look, flat colors, painterly backgrounds"
         ),
-        "urban_drama": (
-            "photorealistic photography, dramatic lighting, high contrast, "
-            "cool color palette, neon accents, gritty urban atmosphere"
+        "anime_cinematic": (
+            "anime style, cinematic anime, dramatic lighting, detailed backgrounds, "
+            "clean lineart, cel shading, vibrant colors, dynamic composition"
         ),
-        "whimsical_illustration": (
-            # BLOCKED - Convert to photorealistic
-            "photorealistic photography, warm tones, natural lighting, "
-            "natural colors, realistic proportions"
+        "anime_slice_of_life": (
+            "anime style, slice of life anime, warm tones, everyday scenes, "
+            "clean lineart, cel shading, flat colors, soft shading"
         ),
-        "photorealistic_documentary": (
-            "photorealistic photography, documentary style, natural lighting, "
-            "candid moment, realistic textures"
-        ),
-        "cinematic_realistic": (
-            "photorealistic photography, cinematic composition, natural lighting, "
-            "shallow depth of field, professional color grading"
-        ),
-        "cinematic_photorealistic": (
-            "photorealistic photography, cinematic composition, natural lighting, "
-            "shallow depth of field, professional color grading"
-        )
     }
 
     # Shot type modifiers
@@ -107,10 +92,6 @@ class PromptEnhancer:
         return final_prompt
 
     def create_negative_prompt(self) -> str:
-        """
-        Create universal negative prompt for SDXL
-        ENHANCED: Block animation styles and common generation issues
-        """
         negative_elements = [
             "low quality",
             "blurry",
@@ -135,18 +116,14 @@ class PromptEnhancer:
             "out of frame",
             "worst quality",
             "jpeg artifacts",
-            "cartoon",
-            "anime style",
-            "illustration",
-            "painting",
-            "drawing",
-            "sketch",
-            "anime",
-            "manga",
-            "comic",
-            "2D art style",
+            "photorealistic",
             "3D render",
             "CGI",
+            "realistic photography",
+            "semi-realistic",
+            "Western comic style",
+            "inconsistent art style",
+            "mixed media",
             "plastic looking",
             "toy-like",
             "over-saturated colors"

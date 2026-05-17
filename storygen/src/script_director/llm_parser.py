@@ -40,6 +40,7 @@ class Panel:
     time_of_day: str = "day"
     weather: str = ""
     key_objects: str = ""  # Key objects like breakfast, book, etc.
+    negative_prompt: str = ""  # LLM-generated panel-specific negative prompt
 
     def __post_init__(self):
         if self.key_actions is None:
@@ -193,6 +194,18 @@ List elements that must REMAIN CONSISTENT across ALL frames:
 - Time of day (ALL panels same time)
 - Lighting style
 - Key objects (food, book, toys, etc.)
+
+### STEP 6B: Negative Prompts (negative_prompts) — NEW
+For EACH panel, generate a negative_prompt that specifically blocks unwanted elements:
+- Style blockers: "3D render, CGI, photorealistic, realistic photography, Western comic style, different art style, inconsistent style, mixed media"
+- Character blockers: "different character, extra person, missing person, gender swap, age change"
+- Quality blockers: "blurry, deformed, bad anatomy, extra limbs, missing limbs, watermark, text, signature, jpeg artifacts, low quality"
+- Scene-specific: If in KITCHEN, block "outdoor, street, office, bedroom"; if in PARK, block "indoor, room, building interior"
+- Format: ONE string per panel, comma-separated terms
+
+### STEP 6C: Style Consistency Lock (CRITICAL!)
+ALL panels MUST use the EXACT SAME art style. Add to EVERY enhanced_prompt:
+"anime style, studio ghibli, clean lineart, cel shading, flat colors, soft shading, hand-drawn look, consistent art style across all frames"
 
 ## OUTPUT EXAMPLE:
 ```json

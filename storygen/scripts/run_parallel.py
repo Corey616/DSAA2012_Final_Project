@@ -111,10 +111,10 @@ def main():
     output_base = Path(args.output)
     output_base.mkdir(parents=True, exist_ok=True)
 
-    tasks_per_gpu = 2  # 80GB / 30GB per task = 2 concurrent per GPU
+    tasks_per_gpu = 2
     tasks = []
     for i, case in enumerate(cases):
-        gpu = gpus[(i // tasks_per_gpu) % len(gpus)]
+        gpu = gpus[i % len(gpus)]
         case_output = str(output_base / case.stem)
         tasks.append((gpu, str(case), case_output))
 

@@ -532,7 +532,6 @@ class NarrativeGenerationPipeline:
             )
             print(f"[Generate] Composed prompt: {prompt[:200]}...")
 
-            # Enhanced negative prompt to prevent common issues
             negative_prompt = (
                 "blurry, blurry hands, blurry face, distorted, deformed, ugly, bad anatomy, "
                 "extra limbs, missing limbs, fused fingers, too many fingers, "
