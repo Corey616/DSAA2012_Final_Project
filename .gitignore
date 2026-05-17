@@ -32,4 +32,6 @@ outputs/
 
 #Archive
 archive/
+*.tar.gz*.zip
+*.pdf
 *.tar.gz
