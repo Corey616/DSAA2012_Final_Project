@@ -56,8 +56,7 @@ def quick_test(script_file: str, output_dir: str = "outputs/quick_test"):
     config = {
         "device": "cuda",  # Use GPU 2 (isolated via CUDA_VISIBLE_DEVICES in shell)
         "use_fp16": True,
-        "consistency_strength": 0.0,  # Disabled - needs proper dimension handling for UNet attention
-        "memory_bank_size": 4,
+        "consistency_strength": 0.0,
         "generation_params": {"num_steps": 40, "guidance_scale": 7.5},
         "height": 1024,
         "width": 1024,

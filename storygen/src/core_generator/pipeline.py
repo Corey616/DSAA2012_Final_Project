@@ -20,8 +20,6 @@ os.environ["HF_ENDPOINT"] = "https://hf-mirror.com"
 
 from src.script_director.llm_parser import ProductionBoard, Panel
 from src.asset_anchor.character_portrait import CharacterPortraitGenerator
-from src.core_generator.attention.consistent_self_attn import ConsistentSelfAttentionProcessor
-from src.core_generator.memory_bank import MemoryBank
 from src.utils.image_utils import remove_white_borders, match_histogram
 
 
@@ -59,8 +57,6 @@ class NarrativeGenerationPipeline:
         self._initialized = False
         self._base_pipe = None
         self._portrait_gen = None
-        self._attn_processor = None
-        self._memory_bank = None
 
         print("=" * 60)
         print("Narrative Weaver Pro - Generation Engine")
@@ -120,46 +116,11 @@ class NarrativeGenerationPipeline:
         return self._portrait_gen
 
     @property
-    def attn_processor(self):
-        """Lazy load attention processor"""
-        if self._attn_processor is None:
-            consistency_strength = self.config.get("consistency_strength", 0.0)
-            if consistency_strength > 0:
-                print("[Pipeline] Setting up Consistent Self-Attention...")
-                self._attn_processor = ConsistentSelfAttentionProcessor(
-                    consistency_strength=consistency_strength,
-                    memory_bank_size=self.config.get("memory_bank_size", 4),
-                    device=self.device
-                )
-                self.base_pipe.transformer.set_attn_processor(self._attn_processor)
-            else:
-                print("[Pipeline] Using default attention (consistency disabled)")
-                self._attn_processor = None  # Will use default processor
-        return self._attn_processor
-
-    @property
-    def memory_bank(self):
-        """Lazy load memory bank"""
-        if self._memory_bank is None:
-            print("[Pipeline] Initializing Memory Bank...")
-            self._memory_bank = MemoryBank(
-                capacity=self.config.get("memory_bank_capacity", 5),
-                decay_factor=self.config.get("memory_decay_factor", 0.9),
-                device=self.device
-            )
-        return self._memory_bank
-
     def initialize(self):
-        """Explicit initialization of all components"""
         if self._initialized:
             return
-
-        # Trigger lazy loading of all components
         _ = self.base_pipe
         _ = self.portrait_gen
-        _ = self.attn_processor
-        _ = self.memory_bank
-
         self._initialized = True
         print("[Pipeline] All components initialized successfully!\n")
 
@@ -476,12 +437,6 @@ class NarrativeGenerationPipeline:
         # Ensure initialization
         self.initialize()
 
-        # Clear memory banks for new story (Bug 4 fix: ensure fresh start)
-        if self._attn_processor is not None:
-            self._attn_processor.clear_memory()
-        if self._memory_bank is not None:
-            self._memory_bank.clear()
-
         # Set seed for reproducibility
         if seed is None:
             seed = torch.randint(0, 2**32, (1,)).item()
@@ -586,62 +541,6 @@ class NarrativeGenerationPipeline:
         if return_portraits:
             return all_images, portraits
         return all_images, None
-
-    def _update_memory(self, image: Image.Image):
-        """
-        Update memory bank with features from generated image
-        FIXED: Proper device handling for model_cpu_offload scenarios
-
-        Args:
-            image: PIL Image to extract features from
-        """
-        # Skip memory update if consistency is disabled
-        if self._attn_processor is None and self._memory_bank is None:
-            return
-            
-        try:
-            import torchvision.transforms as T
-
-            transform = T.Compose([
-                T.Resize((224, 224)),
-                T.ToTensor(),
-            ])
-
-            # Create tensor on CPU first, then move to the same device as VAE
-            img_tensor = transform(image).unsqueeze(0)
-            
-            with torch.no_grad():
-                # Get VAE device safely
-                vae = self.base_pipe.vae
-                
-                # Move VAE to CPU for encoding, then back (safer for CPU offload)
-                vae_device = next(vae.parameters()).device if hasattr(vae, 'parameters') and len(list(vae.parameters())) > 0 else torch.device('cpu')
-                
-                # Move tensor to VAE's device
-                img_for_vae = img_tensor.to(device=vae_device, dtype=vae.dtype)
-                
-                # Encode
-                latent = vae.encode(
-                    img_for_vae * 2 - 1  # Normalize to [-1, 1]
-                ).latent_dist.sample()
-                latent = latent * vae.config.scaling_factor
-
-            # Move latent to pipeline device for consistency processing
-            latent = latent.to(dtype=self.dtype, device=self.device)
-
-            # Update attention processor memory
-            if self._attn_processor is not None:
-                b, c, h, w = latent.shape
-                features = latent.view(b, c, h * w).permute(0, 2, 1)
-                self._attn_processor.update_memory(features)
-
-            # Update memory bank
-            if self._memory_bank is not None:
-                self._memory_bank.update(latent)
-
-        except Exception as e:
-            # Silently skip memory update errors - don't disrupt generation
-            pass
 
     def save_story_images(
         self,

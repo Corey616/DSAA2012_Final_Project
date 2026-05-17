@@ -67,7 +67,6 @@ def run_single(gpu_id: int, script_file: str, output_dir: str):
             "device": "cuda:0",  # CUDA_VISIBLE_DEVICES maps this to gpu_id
             "use_fp16": True,
             "consistency_strength": 0.0,
-            "memory_bank_size": 4,
             "generation_params": {"num_steps": 40, "guidance_scale": 7.5},
             "height": 1024,
             "width": 1024,

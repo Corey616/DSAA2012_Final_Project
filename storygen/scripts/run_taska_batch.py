@@ -54,7 +54,6 @@ def test_single_file(script_file: str, output_dir: str, device: str = "cuda:5") 
         "device": device,
         "use_fp16": True,
         "consistency_strength": 0.0,
-        "memory_bank_size": 4,
         "generation_params": {"num_steps": 40, "guidance_scale": 7.5},  # Higher CFG for better prompt adherence
         "height": 1024,
         "width": 1024,
