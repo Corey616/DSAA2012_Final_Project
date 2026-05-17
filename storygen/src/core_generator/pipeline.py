@@ -447,23 +447,7 @@ class NarrativeGenerationPipeline:
         all_images = []
         portraits = {}
 
-        # Phase 1: Generate character portraits for feature extraction
-        print("\n[Generate] Phase 1: Character Portrait Generation...")
-        char_dict = {k: v.__dict__ for k, v in production_board.characters.items()}
-
-        try:
-            portraits = self.portrait_gen.generate_all_portraits(
-                characters=char_dict,
-                global_style=production_board.global_style,
-                output_dir=f"outputs/portraits/{production_board.story_id}"
-            )
-            print(f"[Generate] Generated {len(portraits)} character portraits")
-        except Exception as e:
-            print(f"[Generate] Warning: Portrait generation failed: {e}")
-            print("[Generate] Continuing without character portraits...")
-
-        # Phase 2: Frame-by-frame generation
-        print("\n[Generate] Phase 2: Frame Generation...")
+        print("\n[Generate] Phase: Batch Frame Generation...")
 
         gen_params = self.config.get("generation_params", {
             "num_steps": 35,
