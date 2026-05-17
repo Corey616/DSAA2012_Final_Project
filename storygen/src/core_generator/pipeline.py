@@ -252,8 +252,8 @@ class NarrativeGenerationPipeline:
                 potential_scene = raw_scene[verb_pos:]
                 
                 # Find where quality terms start
-        quality_terms = ["anime style", "studio ghibli", "clean lineart", "cel shading", 
-                        "flat colors", "hand-drawn", "8k detailed", "highly detailed", "masterpiece"]
+                quality_terms = ["anime style", "studio ghibli", "clean lineart", "cel shading", 
+                                "flat colors", "hand-drawn", "8k detailed", "highly detailed", "masterpiece"]
                 quality_pos = len(potential_scene)
                 for term in quality_terms:
                     pos = potential_scene.lower().find(term.lower())
@@ -516,13 +516,9 @@ class NarrativeGenerationPipeline:
             "guidance_scale": 7.5
         })
 
+        # Collect all prompts for native batch generation
+        prompts = []
         for i, panel in enumerate(production_board.panels):
-            print(f"\n{'=' * 50}")
-            print(f"[Frame {i+1}/{len(production_board.panels)}]")
-            print(f"Description: {panel.raw_prompt[:60]}...")
-            print(f"{'=' * 50}")
-
-            # Compose prompt
             prompt = self._compose_prompt(
                 panel=panel,
                 global_style=production_board.global_style,
@@ -531,69 +527,57 @@ class NarrativeGenerationPipeline:
                 all_panels=production_board.panels,
                 consistency_constraints=production_board.consistency_constraints
             )
-            print(f"[Generate] Composed prompt: {prompt[:200]}...")
+            prompts.append(prompt)
+            print(f"[Generate] Frame {i+1} prompt: {prompt[:120]}...")
 
-            negative_prompt = (
-                "blurry, blurry hands, blurry face, distorted, deformed, ugly, bad anatomy, "
-                "extra limbs, missing limbs, fused fingers, too many fingers, "
-                "missing fingers, extra fingers, poorly drawn hands, poorly drawn face, "
-                "watermark, text, signature, cropped, out of frame, "
-                "low quality, worst quality, jpeg artifacts, "
-                "photorealistic, 3D render, CGI, plastic looking, toy-like, over-saturated"
+        negative_prompt = (
+            "blurry, blurry hands, blurry face, distorted, deformed, ugly, bad anatomy, "
+            "extra limbs, missing limbs, fused fingers, too many fingers, "
+            "missing fingers, extra fingers, poorly drawn hands, poorly drawn face, "
+            "watermark, text, signature, cropped, out of frame, "
+            "low quality, worst quality, jpeg artifacts, "
+            "photorealistic, 3D render, CGI, plastic looking, toy-like, over-saturated"
+        )
+
+        height = self.config.get("height", 1024)
+        width = self.config.get("width", 1024)
+
+        try:
+            print(f"\n[Generate] Native batch inference ({len(prompts)} frames)...")
+            output = self.base_pipe(
+                prompt=prompts,
+                negative_prompt=negative_prompt,
+                height=height,
+                width=width,
+                num_inference_steps=gen_params.get("num_steps", 35),
+                guidance_scale=gen_params.get("guidance_scale", 7.5),
+                generator=generator,
             )
+            raw_images = output.images
 
-            # Generation parameters
-            height = self.config.get("height", 1024)
-            width = self.config.get("width", 1024)
-
-            try:
-                call_kwargs = {
-                    "prompt": prompt,
-                    "negative_prompt": negative_prompt,
-                    "height": height,
-                    "width": width,
-                    "num_inference_steps": gen_params.get("num_steps", 35),
-                    "guidance_scale": gen_params.get("guidance_scale", 7.5),
-                    "generator": generator,
-                }
-                output = self.base_pipe(**call_kwargs)
-
-                current_image = output.images[0]
-                
-                # FIXED: Remove white/gray borders from generated image
-                # This addresses SDXL VAE border issues
+            for i, img in enumerate(raw_images):
+                current_image = img
                 try:
                     current_image = remove_white_borders(current_image, threshold=180)
                 except Exception:
-                    pass  # Keep original if border removal fails
+                    pass
 
-                # Apply color histogram matching to prevent progressive desaturation
-                # across the frame sequence: match each frame to the first frame
                 if i > 0 and len(all_images) > 0:
                     try:
                         blend_strength = 0.3 if i == 1 else 0.15
-                        current_image = match_histogram(
-                            current_image,
-                            all_images[0],
-                            blend=blend_strength
-                        )
+                        current_image = match_histogram(current_image, all_images[0], blend=blend_strength)
                     except Exception:
-                        pass  # Skip matching if it fails
+                        pass
 
                 all_images.append(current_image)
+                print(f"[Generate] Frame {i+1} post-processed")
 
-                # Update memory bank with current frame features
-                self._update_memory(current_image)
-
-                print(f"[Generate] Frame {i+1} completed successfully")
-
-            except Exception as e:
-                print(f"[Generate] Error generating frame {i+1}: {e}")
-                import traceback
-                traceback.print_exc()
-                # Create placeholder for failed frame
-                placeholder = Image.new('RGB', (height, width), color=(128, 128, 128))
-                all_images.append(placeholder)
+        except Exception as e:
+            print(f"[Generate] Batch error: {e}")
+            import traceback
+            traceback.print_exc()
+            for _ in range(len(prompts)):
+                all_images.append(Image.new('RGB', (height, width), color=(128, 128, 128)))
 
         print(f"\n{'=' * 60}")
         print(f"[Generate] Story generation complete! Generated {len(all_images)} frames")
