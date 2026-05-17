@@ -1,0 +1,127 @@
+// .opencode/oh-my-opencode.jsonc
+// .opencode/oh-my-opencode.jsonc
+{
+  "$schema": "https://raw.githubusercontent.com/code-yeongyu/oh-my-openagent/dev/assets/oh-my-opencode.schema.json",
+
+  // ============================================
+  // Agent 精确配置
+  // ============================================
+  "agents": {
+    // —— 核心大脑（DeepSeek V4 Pro，平衡温度）——
+    "sisyphus": {
+      "model": "deepseek/deepseek-v4-pro",
+      "variant": "max",
+      "category": "ultrabrain",
+      "temperature": 0.4               // ✅ 规划与调度
+    },
+    // 用于处理复杂架构任务的深度分析 Agent
+    "oracle": {
+      "model": "deepseek/deepseek-v4-pro",
+      "category": "ultrabrain",
+      "temperature": 0.2               // ✅ 深度分析与逻辑审查
+    },
+    // 计划制定者，专注于生成执行方案
+    "prometheus": {
+      "model": "deepseek/deepseek-v4-pro",
+      "variant": "max",
+      "category": "ultrabrain",
+      "temperature": 0.4
+    },
+
+    // —— 深度执行者（根据你的要求，全部升级为 Pro 版）——
+    "hephaestus": {
+      "allow_non_gpt_model": true,       // ✅ 添加此行以绕过GPT限制
+      "model": "deepseek/deepseek-v4-pro",  // ✅ 已按你的要求修改为 Pro 版
+      "category": "deep",
+      "temperature": 0.1
+    },
+    "atlas": {
+      "model": "deepseek/deepseek-v4-pro",
+      "category": "deep",
+      "temperature": 0.1
+    },
+    "momus": {
+      "model": "deepseek/deepseek-v4-pro",
+      "category": "deep",
+      "temperature": 0.1
+    },
+    "metis": {
+      "model": "deepseek/deepseek-v4-pro",
+      "category": "deep",
+      "temperature": 0.1
+    },
+
+    // —— 轻量高效团队（按你的要求，全部改为 Flash 版）——
+    // 研究员，用于检索外部文档与最佳实践
+    "librarian": {
+      "model": "deepseek/deepseek-v4-flash",  // ✅ 已按你的要求修改为 Flash
+      "category": "quick",
+      "temperature": 0.1
+    },
+    // 代码库侦察员，执行快速的代码搜索
+    "explore": {
+      "model": "deepseek/deepseek-v4-flash",  // ✅ 已按你的要求修改为 Flash
+      "category": "quick",
+      "temperature": 0.1
+    },
+    // 视觉/多媒体理解专家
+    "multimodal-looker": {
+      "model": "opencode/qwen3.6-plus-free",
+      "category": "quick",
+      "temperature": 0.4
+    },
+
+    // —— Sisyphus 的辅助执行者（保持 Flash 版）——
+    "sisyphus-junior": {
+      "model": "deepseek/deepseek-v4-flash",
+      "temperature": 0.3
+    },
+
+    // —— 通用任务处理器（按你的要求，改为 Flash 版）——
+    "general-executor": {                     
+      "model": "deepseek/deepseek-v4-flash", // ✅ 已按你的要求修改为 Flash
+      "category": "unspecified-high",
+      "temperature": 0.3
+    }
+  },
+
+  // ============================================
+  // 类别路由配置（保持不变，模型无重复）
+  // ============================================
+  "categories": {
+    "visual-engineering": {
+      "model": "deepseek/deepseek-v4-pro",
+      "variant": "high"
+    },
+    "ultrabrain": {
+      "model": "deepseek/deepseek-v4-pro",
+      "variant": "max"
+    },
+    "deep": {
+      "model": "deepseek/deepseek-v4-flash",
+      "variant": "high"
+    },
+    "artistry": {
+      "model": "deepseek/deepseek-v4-pro",
+      "variant": "high"
+    },
+    "quick": {
+      "model": "deepseek/deepseek-v4-flash"
+    },
+    "unspecified-low": {
+      "model": "opencode/big-pickle"
+    },
+    "unspecified-high": {
+      "model": "deepseek/deepseek-v4-flash",
+      "variant": "high"
+    },
+    "writing": {
+      "model": "opencode/big-pickle"
+    }
+  },
+
+  "ralph_loop": {
+    "enabled": true,
+    "default_max_iterations": 100
+  }
+}

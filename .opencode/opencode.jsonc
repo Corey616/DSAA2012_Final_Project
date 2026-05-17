@@ -1,0 +1,46 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "plugin": [
+    "oh-my-opencode@latest"
+  ],
+
+  "provider": {
+    "deepseek": {
+      "options": {
+        "baseURL": "https://api.deepseek.com",
+        "apiKey": "{env:DEEPSEEK_API_KEY}"
+      }
+    }
+    // OpenCode Zen 无需在 provider 中显式声明
+    // 执行 /connect → 选择 OpenCode Zen → 粘贴 API Key 后自动注册
+  },
+  
+  "agent": {
+    "general": {
+      "model": "deepseek/deepseek-v4-flash", 
+      "mode": "subagent"
+    }
+  },
+
+  "permission": {
+    "mcp": {
+      "*": "allow"
+    },
+    "bash": {
+      "*": "allow"
+    },
+    "skill": {
+      "*": "allow"
+    },
+    "external_directory": "allow"
+  },
+
+  "mcp": {
+    // 保留：视觉检查（moondream）
+    "moondream": {
+      "type": "local",
+      "enabled": true,
+      "command": ["bunx", "-y", "@iflow-mcp/nighttrek-moondream-mcp"]
+    }
+  }
+}
