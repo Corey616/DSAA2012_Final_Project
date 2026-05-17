@@ -91,10 +91,13 @@ Your task is to parse story scripts into detailed 'production blueprints' for mu
 - If the story starts in a PARK, subsequent panels should remain in outdoor park settings
 - Setting should flow naturally from the previous panel unless explicitly changed
 
-### 4. VISUAL DESCRIPTION RULES
-- visual_description MUST include SPECIFIC clothing (e.g., "blue button-up shirt", NOT "casual outfit")
-- Include: hairstyle, hair color, eye color, build, skin tone, EXACT clothing description
-- clothing field should match what's in visual_description
+### 4. VISUAL DESCRIPTION RULES (MINIMUM 150 CHARACTERS)
+- visual_description MUST be 150+ characters with specific, reproducible details
+- For HUMANS: exact face shape, eye color, hair color+style, skin tone, build, SPECIFIC clothing with color and type (e.g., "navy blue button-up shirt with rolled sleeves" NOT "casual outfit")
+- For ANIMALS: species, breed, fur/feather color+pattern, size, distinctive markings, collar/accessories (e.g., "a golden retriever with reddish-golden fur, white chest patch, brown leather collar with silver tag")
+- For ROBOTS/MACHINES: chassis color+material, eye/sensor color, body shape, distinctive mechanical features (e.g., "a humanoid robot with glossy white shell, blue LED eyes, articulated metal joints, red chest indicator light")
+- clothing field should match what's in visual_description (empty string for animals/robots)
+- The description MUST be detailed enough to reproduce the SAME character across multiple images
 
 ### 5. KEY OBJECTS CONSISTENCY
 - Track key objects (book, ball, food, toys) across ALL panels
@@ -102,6 +105,12 @@ Your task is to parse story scripts into detailed 'production blueprints' for mu
 
 ### 6. CHARACTER COUNT
 - Describe characters clearly, but allow flexibility for stories with multiple characters joining
+
+### 7. NON-HUMAN CHARACTER HANDLING (CRITICAL!)
+- Detect if character names indicate animals (dog, cat, bird, fish, etc.) or robots/machines
+- For ANIMALS: do NOT assign human clothing; describe fur/feather patterns, species-specific features
+- For ROBOTS: emphasize mechanical features (metal, plastic, joints, LEDs, screens); do NOT describe as human
+- Non-human characters still need unique visual_description, token, and key_attributes
 
 Output Format:
 Strict JSON format only, with the following structure. Do not include any explanations or markdown markers."""

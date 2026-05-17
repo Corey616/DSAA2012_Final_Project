@@ -240,7 +240,42 @@ class NarrativeGenerationPipeline:
             combined_char = ", ".join(char_descriptions)
         else:
             combined_char = ""
-        
+
+        # === Identity Anchoring for Cross-Frame Consistency ===
+        # Track first frame character descriptions for reuse in later frames.
+        # For frames 1+, prepend "Same X as before, identical face, exact same clothing"
+        # to guide the model to preserve identity across frames.
+        if panel_index is not None and panel_index == 0:
+            # Save character descriptions from frame 0
+            self._first_frame_char_descriptions = {}
+            for idx, char_name in enumerate(present_char_names):
+                if idx < len(char_descriptions):
+                    self._first_frame_char_descriptions[char_name] = char_descriptions[idx]
+        elif panel_index is not None and panel_index > 0 and self._first_frame_char_descriptions:
+            # Inject identity anchors for frames 1+
+            identity_anchors = []
+            for char_name in present_char_names:
+                if char_name in self._first_frame_char_descriptions and char_name in characters:
+                    char_obj = characters[char_name]
+                    # Extract specific clothing anchor
+                    clothing_anchor = ""
+                    if hasattr(char_obj, 'clothing') and char_obj.clothing:
+                        clothing_anchor = f", wearing the exact same {char_obj.clothing}"
+                    elif hasattr(char_obj, 'visual_description') and char_obj.visual_description:
+                        import re
+                        m = re.search(r'wearing\s+([^,.]+(?:,\s*[^,.]+)*)', char_obj.visual_description, re.IGNORECASE)
+                        if m:
+                            clothing_anchor = f", wearing the exact same {m.group(1).strip()}"
+                    identity_anchors.append(
+                        f"Same {char_name} as before, identical face{clothing_anchor}"
+                    )
+            if identity_anchors:
+                identity_str = ". ".join(identity_anchors) + ". "
+                if combined_char:
+                    combined_char = identity_str + combined_char
+                else:
+                    combined_char = identity_str.rstrip(". ")
+
         # === STEP 2: Build scene description ===
         # CRITICAL FIX: Extract ONLY the scene/action part from enhanced_prompt
         # Character description is already handled in char_descriptions
@@ -561,7 +596,9 @@ class NarrativeGenerationPipeline:
             # For frames 2+, add identity-preservation negative prompts to prevent drift
             if i >= 1:
                 negative_prompt += (
-                    ", different person, identity change, face swap, changed clothing"
+                    ", different person, identity change, face swap, altered appearance, "
+                    "changed clothing, inconsistent outfit, different hairstyle, "
+                    "clothing change, morphing face, different eye color"
                 )
 
             # Generation parameters
