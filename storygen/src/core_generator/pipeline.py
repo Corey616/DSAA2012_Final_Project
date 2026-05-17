@@ -252,8 +252,8 @@ class NarrativeGenerationPipeline:
                 potential_scene = raw_scene[verb_pos:]
                 
                 # Find where quality terms start
-                quality_terms = ["photorealistic", "realistic photography", "sharp focus", 
-                               "8k detailed", "highly detailed", "masterpiece"]
+        quality_terms = ["anime style", "studio ghibli", "clean lineart", "cel shading", 
+                        "flat colors", "hand-drawn", "8k detailed", "highly detailed", "masterpiece"]
                 quality_pos = len(potential_scene)
                 for term in quality_terms:
                     pos = potential_scene.lower().find(term.lower())
@@ -272,8 +272,9 @@ class NarrativeGenerationPipeline:
             # Fall back to raw_prompt
             scene_desc = re.sub(r'<[A-Z][a-z]+>\s*', '', panel.raw_prompt).strip()
         
-        # Remove photorealistic/quality terms from scene_desc (we add them later)
-        quality_terms = ["photorealistic", "realistic photography", "sharp focus", 
+
+        quality_terms = ["anime style", "studio ghibli", "clean lineart", "cel shading",
+                        "flat colors", "photorealistic", "realistic photography", "sharp focus",
                         "8k detailed", "highly detailed", "masterpiece"]
         for term in quality_terms:
             scene_desc = re.sub(rf',\s*{re.escape(term)}', '', scene_desc, flags=re.IGNORECASE)
@@ -411,7 +412,7 @@ class NarrativeGenerationPipeline:
 
         # Style and quality
         add_unique(global_style)
-        add_unique("photorealistic, 8k, sharp focus, cinematic lighting")
+        add_unique("anime style, studio ghibli, clean lineart, cel shading, flat colors")
 
         return ", ".join(filter(None, parts))
 

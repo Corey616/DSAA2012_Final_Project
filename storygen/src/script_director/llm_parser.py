@@ -165,10 +165,10 @@ For each [SCENE]:
   * Setting (SAME as previous panel unless stated otherwise)
   * Key objects (SAME as previous panel)
   * Lighting matching time_of_day
-  * "photorealistic, realistic photography, sharp focus, 8k detailed"
-  
-  **Example for morning routine story:**
-  "Lily, a young woman with auburn hair and glasses, sits at kitchen table eating breakfast. Modern kitchen interior, morning sunlight through window. photorealistic..."
+   * "anime style, studio ghibli, clean lineart, cel shading, flat colors"
+   
+   **Example for morning routine story:**
+   "Lily, a young woman with auburn hair and glasses, sits at kitchen table eating breakfast. Modern kitchen interior, morning sunlight through window. anime style, studio ghibli..."
 
 - `shot_type`: "extreme_closeup" / "closeup" / "medium" / "wide" / "over_shoulder" / "establishing"
 - `camera_movement`: "static" / "slow_push_in" / "pull_back" / "pan_left_right" / "tracking"

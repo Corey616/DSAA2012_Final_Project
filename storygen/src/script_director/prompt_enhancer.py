@@ -12,7 +12,7 @@ class PromptEnhancer:
     """
     Prompt Enhancement Engine
 
-    CRITICAL FIX: Ensure photorealistic style, block non-realistic styles.
+    CRITICAL FIX: Ensure anime style, block photorealistic styles.
     """
 
     # SDXL-optimized quality prefixes
@@ -63,7 +63,7 @@ class PromptEnhancer:
     ) -> str:
         """
         Enhance a single panel prompt with modifiers.
-        CRITICAL FIX: Ensure photorealistic style at the end.
+        CRITICAL FIX: Ensure anime style at the end.
         """
         components = []
 
@@ -73,9 +73,9 @@ class PromptEnhancer:
             components.append(main_content)
 
         # 2. Style modifier (add after main content)
-        # Get style and ensure it's photorealistic
+        # Get style and ensure it's anime
         style_mod = self.STYLE_MODIFIERS.get(global_style, 
-            "photorealistic photography, cinematic quality")
+            "anime style, studio ghibli, clean lineart, cel shading, flat colors")
         components.append(style_mod)
 
         # 3. Shot type modifier
@@ -83,8 +83,8 @@ class PromptEnhancer:
         if shot_mod:
             components.append(shot_mod)
 
-        # 4. Quality suffixes - include photorealistic emphasis
-        components.append("photorealistic, sharp focus, 8k detailed")
+        # 4. Quality suffixes - anime style
+        components.append("anime style, studio ghibli, clean lineart, cel shading, flat colors")
 
         # Combine into final prompt
         final_prompt = ", ".join(filter(None, components))
