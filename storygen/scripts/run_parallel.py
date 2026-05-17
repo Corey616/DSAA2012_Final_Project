@@ -111,17 +111,19 @@ def main():
     output_base = Path(args.output)
     output_base.mkdir(parents=True, exist_ok=True)
 
+    tasks_per_gpu = 2  # 80GB / 30GB per task = 2 concurrent per GPU
     tasks = []
     for i, case in enumerate(cases):
-        gpu = gpus[i % len(gpus)]
+        gpu = gpus[(i // tasks_per_gpu) % len(gpus)]
         case_output = str(output_base / case.stem)
         tasks.append((gpu, str(case), case_output))
 
-    print(f"🚀 Launching {len(tasks)} workers across {len(gpus)} GPUs...\n")
+    total_workers = len(gpus) * tasks_per_gpu
+    print(f"🚀 Launching {len(tasks)} workers across {len(gpus)} GPUs ({tasks_per_gpu}/GPU, {total_workers} concurrent)...\n")
     start_time = time.time()
 
     results = []
-    with ProcessPoolExecutor(max_workers=len(gpus)) as executor:
+    with ProcessPoolExecutor(max_workers=total_workers) as executor:
         futures = {
             executor.submit(run_worker, gpu, script, out): (gpu, script)
             for gpu, script, out in tasks
