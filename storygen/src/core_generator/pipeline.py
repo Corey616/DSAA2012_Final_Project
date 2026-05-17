@@ -115,7 +115,6 @@ class NarrativeGenerationPipeline:
             )
         return self._portrait_gen
 
-    @property
     def initialize(self):
         if self._initialized:
             return
