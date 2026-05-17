@@ -35,3 +35,4 @@ archive/
 *.tar.gz*.zip
 *.pdf
 *.tar.gz
+.env
