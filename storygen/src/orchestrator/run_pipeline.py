@@ -101,7 +101,6 @@ def run_pipeline():
     """Main execution function"""
     import argparse
     from src.script_director.llm_parser import LLMScriptParser
-    from src.script_director.prompt_enhancer import PromptEnhancer
     from src.core_generator.pipeline import NarrativeGenerationPipeline
 
     args = parse_args()
@@ -130,7 +129,6 @@ def run_pipeline():
     # Initialize components
     print(f"\nInitializing components...")
     llm_parser = LLMScriptParser(llm_backend=llm_backend, model_name=llm_model)
-    enhancer = PromptEnhancer()
 
     if not args.eval_only:
         config = build_pipeline_config(args)
@@ -153,10 +151,6 @@ def run_pipeline():
             # LLM Parsing
             print(f"[Step 1] LLM Script Parsing...")
             board = llm_parser.process_script_file(str(script_path))
-
-            # Prompt Enhancement
-            print(f"[Step 2] Prompt Enhancement...")
-            enhanced_prompts = enhancer.process_entire_story(board)
 
             if args.dry_run:
                 result["status"] = "dry_run_completed"
