@@ -179,11 +179,12 @@ For each [SCENE]:
 - `key_objects`: Track these across ALL panels (bus, food, book, etc.)
 
 ### STEP 5: Global Style (global_style)
-Choose ONE style, MUST produce photorealistic images:
-- "warm_cinematic_lifestyle" - Warm cinematic drama
-- "urban_drama" - Urban drama
-- "photorealistic_documentary" - Photorealistic documentary
-- "cinematic_realistic" - Cinematic realistic
+Choose ONE style, MUST produce anime/animation style images (clean, consistent, avoids texture inconsistency):
+- "anime_ghibli" - Studio Ghibli inspired, soft colors, clean lineart
+- "anime_cinematic" - Cinematic anime, dramatic lighting, detailed backgrounds
+- "anime_slice_of_life" - Slice of life anime, warm tones, everyday scenes
+
+CRITICAL: ALL enhanced_prompts MUST end with "anime style, studio ghibli, clean lineart, cel shading, flat colors, no texture patterns" (NOT "photorealistic")
 
 ### STEP 6: Consistency Constraints (consistency_constraints)
 List elements that must REMAIN CONSISTENT across ALL frames:
@@ -199,7 +200,7 @@ List elements that must REMAIN CONSISTENT across ALL frames:
   "characters": {{...}},
   "panels": [
     {{
-      "enhanced_prompt": "Lily, young woman with auburn hair, sitting at kitchen table eating breakfast. Modern kitchen interior, morning sunlight through window. photorealistic...",
+      "enhanced_prompt": "Lily, young woman with auburn hair, sitting at kitchen table eating breakfast. Modern kitchen interior, morning sunlight through window. anime style, studio ghibli...",
       "time_of_day": "morning",
       "setting": "Modern kitchen with breakfast table",
       "key_objects": "breakfast food, coffee cup"

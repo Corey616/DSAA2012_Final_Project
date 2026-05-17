@@ -62,9 +62,6 @@ class NarrativeGenerationPipeline:
         self._attn_processor = None
         self._memory_bank = None
 
-        # Identity anchoring: track first frame character descriptions for cross-frame consistency
-        self._first_frame_char_descriptions = {}  # char_name -> description string
-
         print("=" * 60)
         print("Narrative Weaver Pro - Generation Engine")
         print("=" * 60)
@@ -109,17 +106,6 @@ class NarrativeGenerationPipeline:
                 self._base_pipe.enable_model_cpu_offload()
 
         return self._base_pipe
-
-    @property
-    def img2img_pipe(self):
-        """Lazy load img2img pipeline from base pipe for frame harmonization"""
-        if self._img2img_pipe is None:
-            from diffusers import StableDiffusion3Img2ImgPipeline
-            print("[Pipeline] Creating img2img pipeline from base pipe...")
-            self._img2img_pipe = StableDiffusion3Img2ImgPipeline.from_pipe(self.base_pipe)
-            if self.config.get("enable_model_cpu_offload", True):
-                self._img2img_pipe.enable_model_cpu_offload()
-        return self._img2img_pipe
 
     @property
     def portrait_gen(self):
@@ -241,41 +227,6 @@ class NarrativeGenerationPipeline:
         else:
             combined_char = ""
 
-        # === Identity Anchoring for Cross-Frame Consistency ===
-        # Track first frame character descriptions for reuse in later frames.
-        # For frames 1+, prepend "Same X as before, identical face, exact same clothing"
-        # to guide the model to preserve identity across frames.
-        if panel_index is not None and panel_index == 0:
-            # Save character descriptions from frame 0
-            self._first_frame_char_descriptions = {}
-            for idx, char_name in enumerate(present_char_names):
-                if idx < len(char_descriptions):
-                    self._first_frame_char_descriptions[char_name] = char_descriptions[idx]
-        elif panel_index is not None and panel_index > 0 and self._first_frame_char_descriptions:
-            # Inject identity anchors for frames 1+
-            identity_anchors = []
-            for char_name in present_char_names:
-                if char_name in self._first_frame_char_descriptions and char_name in characters:
-                    char_obj = characters[char_name]
-                    # Extract specific clothing anchor
-                    clothing_anchor = ""
-                    if hasattr(char_obj, 'clothing') and char_obj.clothing:
-                        clothing_anchor = f", wearing the exact same {char_obj.clothing}"
-                    elif hasattr(char_obj, 'visual_description') and char_obj.visual_description:
-                        import re
-                        m = re.search(r'wearing\s+([^,.]+(?:,\s*[^,.]+)*)', char_obj.visual_description, re.IGNORECASE)
-                        if m:
-                            clothing_anchor = f", wearing the exact same {m.group(1).strip()}"
-                    identity_anchors.append(
-                        f"Same {char_name} as before, identical face{clothing_anchor}"
-                    )
-            if identity_anchors:
-                identity_str = ". ".join(identity_anchors) + ". "
-                if combined_char:
-                    combined_char = identity_str + combined_char
-                else:
-                    combined_char = identity_str.rstrip(". ")
-
         # === STEP 2: Build scene description ===
         # CRITICAL FIX: Extract ONLY the scene/action part from enhanced_prompt
         # Character description is already handled in char_descriptions
@@ -353,7 +304,7 @@ class NarrativeGenerationPipeline:
             prompt_parts.append(f"in {panel.setting}")
         
         # 3f. Style (ALWAYS last)
-        prompt_parts.append("photorealistic, realistic photography, sharp focus, 8k detailed")
+        prompt_parts.append("anime style, studio ghibli, clean lineart, cel shading, flat colors")
         
         # === STEP 4: Combine with truncation ===
         base_prompt = ", ".join(prompt_parts)
@@ -363,7 +314,7 @@ class NarrativeGenerationPipeline:
         MAX_LEN = 380
         if len(base_prompt) > MAX_LEN:
             char_part = prompt_parts[0] if prompt_parts else ""
-            style_part = "photorealistic, realistic photography, sharp focus, 8k detailed"
+            style_part = "anime style, studio ghibli, clean lineart, cel shading, flat colors"
             
             # Reserve space for character (200 chars) and style (60 chars)
             available = MAX_LEN - len(char_part) - len(style_part) - 10
@@ -588,52 +539,24 @@ class NarrativeGenerationPipeline:
                 "missing fingers, extra fingers, poorly drawn hands, poorly drawn face, "
                 "watermark, text, signature, cropped, out of frame, "
                 "low quality, worst quality, jpeg artifacts, "
-                "cartoon, anime style, illustration, painting, drawing, sketch, "
-                "anime, manga, comic, 2D art style, 3D render, CGI, "
-                "plastic looking, toy-like, over-saturated, oversaturated colors"
+                "photorealistic, 3D render, CGI, plastic looking, toy-like, over-saturated"
             )
-
-            # For frames 2+, add identity-preservation negative prompts to prevent drift
-            if i >= 1:
-                negative_prompt += (
-                    ", different person, identity change, face swap, altered appearance, "
-                    "changed clothing, inconsistent outfit, different hairstyle, "
-                    "clothing change, morphing face, different eye color"
-                )
 
             # Generation parameters
             height = self.config.get("height", 1024)
             width = self.config.get("width", 1024)
 
             try:
-                # Frame 0: pure txt2img; Frames 1+: img2img with previous frame
-                if i == 0:
-                    call_kwargs = {
-                        "prompt": prompt,
-                        "negative_prompt": negative_prompt,
-                        "height": height,
-                        "width": width,
-                        "num_inference_steps": gen_params.get("num_steps", 35),
-                        "guidance_scale": gen_params.get("guidance_scale", 7.5),
-                        "generator": generator,
-                    }
-                    output = self.base_pipe(**call_kwargs)
-                else:
-                    # Use previous frame as init_image with decay strength
-                    strength = max(0.70 - 0.05 * (i - 1), 0.55)
-                    print(f"[Generate] img2img harmonization (strength={strength:.2f})")
-                    call_kwargs = {
-                        "prompt": prompt,
-                        "negative_prompt": negative_prompt,
-                        "image": all_images[-1],
-                        "strength": strength,
-                        "height": height,
-                        "width": width,
-                        "num_inference_steps": gen_params.get("num_steps", 35),
-                        "guidance_scale": gen_params.get("guidance_scale", 7.5),
-                        "generator": generator,
-                    }
-                    output = self.img2img_pipe(**call_kwargs)
+                call_kwargs = {
+                    "prompt": prompt,
+                    "negative_prompt": negative_prompt,
+                    "height": height,
+                    "width": width,
+                    "num_inference_steps": gen_params.get("num_steps", 35),
+                    "guidance_scale": gen_params.get("guidance_scale", 7.5),
+                    "generator": generator,
+                }
+                output = self.base_pipe(**call_kwargs)
 
                 current_image = output.images[0]
                 
